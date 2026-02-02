@@ -5,8 +5,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
-
-// Importa os componentes
 import { BingoComponent } from '../../components/bingo.component';
 import { ChatComponent } from '../../components/chat.component';
 
@@ -16,7 +14,6 @@ import { ChatComponent } from '../../components/chat.component';
   imports: [CommonModule, FormsModule, LucideAngularModule, BingoComponent, ChatComponent],
   template: `
     <div class="min-h-screen bg-slate-950 text-white flex flex-col font-sans">
-      
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
         <div class="flex items-center gap-3">
           <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
@@ -42,11 +39,8 @@ import { ChatComponent } from '../../components/chat.component';
           </div>
         } 
         @else {
-          
           <div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <div class="lg:col-span-2">
-              
               @if (roomData()?.status === 'PLAYING') {
                 <app-bingo 
                   [isHost]="isHost()" 
@@ -54,14 +48,11 @@ import { ChatComponent } from '../../components/chat.component';
                   [initialCard]="userCard()"
                   [winningModes]="roomData()?.winning_modes || ['FULL']">
                 </app-bingo>
-
               } @else {
                 <div class="flex flex-col items-center text-center">
                   <h2 class="text-3xl font-bold mb-6">Sala de {{ roomData()?.game_type }}</h2>
-                  
                   @if (isHost()) {
                     <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg mb-6 shadow-xl">
-                      
                       <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4 mb-6 group cursor-pointer" (click)="copyRoomCode()">
                         <div class="text-left">
                           <p class="text-xs text-slate-500 font-bold uppercase">Compartilhe o código</p>
@@ -69,7 +60,6 @@ import { ChatComponent } from '../../components/chat.component';
                         </div>
                         <lucide-icon [img]="copied() ? Check : Copy" class="w-6 h-6 text-indigo-500"></lucide-icon>
                       </div>
-
                       <div class="text-left mb-6">
                         <p class="text-xs text-slate-400 font-bold uppercase mb-3 flex items-center gap-2">
                           <lucide-icon [img]="Settings" class="w-3 h-3"></lucide-icon> Modos de Vitória
@@ -93,18 +83,15 @@ import { ChatComponent } from '../../components/chat.component';
                           </label>
                         </div>
                       </div>
-
                       <button (click)="startGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
                         <lucide-icon [img]="Trophy" class="w-5 h-5"></lucide-icon> INICIAR PARTIDA
                       </button>
                     </div>
-
                   } @else {
                     <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6 animate-pulse max-w-md mx-auto">
                        <p class="text-slate-400 text-lg">Aguardando o Organizador configurar e iniciar...</p>
                     </div>
                   }
-                  
                   <div class="w-full max-w-2xl mt-4">
                      <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center">Jogadores Conectados</h3>
                      <div class="flex flex-wrap gap-2 justify-center">
@@ -122,7 +109,6 @@ import { ChatComponent } from '../../components/chat.component';
                 </div>
               }
             </div>
-
             <div class="lg:col-span-1">
               <div class="sticky top-20">
                 <app-chat 
@@ -134,7 +120,6 @@ import { ChatComponent } from '../../components/chat.component';
                 </app-chat>
               </div>
             </div>
-
           </div>
         }
       </main>
@@ -160,12 +145,10 @@ export class RoomComponent implements OnInit, OnDestroy {
   roomData = signal<any>(null);
   players = signal<any[]>([]);
   currentUser = signal<any>(null);
-  userCard = signal<number[]>([]); // SINAL PARA GUARDAR A CARTELA
-  
+  userCard = signal<number[]>([]);
   selectedModes = signal<string[]>(['FULL']);
 
   isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
-
   private channel: RealtimeChannel | null = null;
 
   async ngOnInit() {
@@ -188,47 +171,55 @@ export class RoomComponent implements OnInit, OnDestroy {
       this.roomData.set(room);
       if (room.winning_modes) this.selectedModes.set(room.winning_modes);
 
-      // --- LOGICA DA CARTELA ÚNICA ---
+      // --- CORREÇÃO: GARANTE QUE O JOGADOR TENHA CARTELA ---
       if (user) {
-        // 1. Verifica se já tenho cartela
+        // Tenta buscar o jogador. Use maybeSingle() para evitar erro se não existir.
         const { data: existingPlayer } = await this.supabase.client
           .from('room_players')
-          .select('card')
+          .select('*')
           .eq('room_code', this.roomId)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         let myCard = existingPlayer?.card;
 
-        if (!existingPlayer) {
-          // 2. Se não tenho, peço pro banco gerar (CARTELA UNICA)
+        // SE O JOGADOR NÃO EXISTE -- OU -- SE EXISTE MAS A CARTELA TÁ VAZIA
+        if (!existingPlayer || !myCard || myCard.length === 0) {
+          
+          // Gera uma nova cartela
           const { data: uniqueCard, error: rpcError } = await this.supabase.client
             .rpc('generate_unique_card', { room_code_param: this.roomId });
 
           if (rpcError) throw rpcError;
           myCard = uniqueCard;
 
-          // 3. Salvo minha entrada no banco com a cartela
-          await this.supabase.client.from('room_players').insert({
-             room_code: this.roomId,
-             user_id: user.id,
-             card: myCard
-          });
+          if (existingPlayer) {
+             // Se ele já estava na lista, só atualiza a cartela dele (Correção dos dados antigos)
+             await this.supabase.client
+               .from('room_players')
+               .update({ card: myCard })
+               .eq('room_code', this.roomId)
+               .eq('user_id', user.id);
+          } else {
+             // Se é novo, insere
+             await this.supabase.client.from('room_players').insert({
+                room_code: this.roomId,
+                user_id: user.id,
+                card: myCard
+             });
+          }
         }
         
-        // Guardo no sinal para passar pro Bingo
         if (myCard) this.userCard.set(myCard);
       }
+      // --------------------------------------------------------
 
       this.fetchPlayers();
       this.setupRealtime();
     } catch (err: any) {
-      console.error('Erro ao conectar:', err);
-      // COMENTE A LINHA ABAIXO PARA NÃO EXPULSAR O JOGADOR:
-      // this.router.navigate(['/lobby']);
-      
-      // ADICIONE ISTO PARA VER O ERRO NA TELA:
-      alert("Erro ao entrar na sala: " + (err.message || JSON.stringify(err)));
+      console.error(err);
+      // Alerta para descobrirmos o que acontece no celular
+      alert("Erro ao entrar: " + (err.message || "Erro desconhecido"));
     } finally {
       this.loading.set(false);
     }
@@ -261,25 +252,16 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   async startGame() {
     try {
-        // 1. Limpa as mensagens antigas dessa sala
-        await this.supabase.client
-          .from('messages')
-          .delete()
-          .eq('room_code', this.roomId);
-
-        // 2. Atualiza o status da sala e fecha o chat
-        await this.supabase.client
-          .from('rooms')
+        await this.supabase.client.from('messages').delete().eq('room_code', this.roomId);
+        await this.supabase.client.from('rooms')
           .update({ 
             status: 'PLAYING', 
             winning_modes: this.selectedModes(),
             chat_open: false 
-          })
-          .eq('code', this.roomId);
-          
-    } catch (error: any) { // <--- A CORREÇÃO ESTÁ AQUI (: any)
+          }).eq('code', this.roomId);
+    } catch (error: any) {
         console.error(error);
-        alert('Erro ao iniciar partida: ' + (error.message || 'Erro desconhecido'));
+        alert('Erro ao iniciar: ' + error.message);
     }
   }
 

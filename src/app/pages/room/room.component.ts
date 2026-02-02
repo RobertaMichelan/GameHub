@@ -1,16 +1,19 @@
 import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { LucideAngularModule, Home, Users, Trophy, Copy, Check } from 'lucide-angular';
+import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
-// IMPORTAMOS O JOGO AQUI
+
+// Importa os componentes
 import { BingoComponent } from '../../components/bingo.component';
+import { ChatComponent } from '../../components/chat.component';
 
 @Component({
   selector: 'app-room',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, BingoComponent], // ADICIONAMOS AQUI
+  imports: [CommonModule, FormsModule, LucideAngularModule, BingoComponent, ChatComponent],
   template: `
     <div class="min-h-screen bg-slate-950 text-white flex flex-col font-sans">
       
@@ -31,7 +34,7 @@ import { BingoComponent } from '../../components/bingo.component';
         </div>
       </header>
 
-      <main class="flex-1 p-6 flex flex-col items-center max-w-4xl mx-auto w-full">
+      <main class="flex-1 p-4 md:p-6 flex flex-col items-center max-w-6xl mx-auto w-full">
         @if (loading()) {
           <div class="flex flex-col items-center gap-4 mt-20 animate-pulse">
             <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
@@ -40,54 +43,99 @@ import { BingoComponent } from '../../components/bingo.component';
         } 
         @else {
           
-          @if (roomData()?.status === 'PLAYING') {
+          <div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <app-bingo [isHost]="isHost()" [roomId]="roomId"></app-bingo>
-
-          } @else {
-            
-            <div class="text-center mb-8 mt-4 w-full max-w-lg">
-              <h2 class="text-3xl font-bold mb-2">Sala de {{ roomData()?.game_type }}</h2>
+            <div class="lg:col-span-2">
               
-              @if (isHost()) {
-                <div class="bg-indigo-900/20 border border-indigo-500/30 p-6 rounded-2xl mb-6 mt-6 shadow-2xl">
-                  <p class="text-indigo-300 font-bold mb-4 uppercase tracking-wide text-sm">Convide seus amigos:</p>
-                  <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center gap-4 group">
-                    <div class="text-6xl font-mono font-black text-white tracking-widest select-all cursor-pointer" (click)="copyRoomCode()">
-                      {{ roomId }}
-                    </div>
-                    <button (click)="copyRoomCode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2 shadow-lg">
-                      <lucide-icon [img]="copied() ? Check : Copy" class="w-4 h-4"></lucide-icon>
-                      {{ copied() ? 'COPIADO!' : 'COPIAR CÓDIGO' }}
-                    </button>
-                  </div>
-                </div>
-
-                <div class="fixed bottom-8 px-4 z-50 left-0 right-0 flex justify-center">
-                  <button (click)="startGame()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform hover:scale-105 transition-all text-lg flex items-center gap-2 shadow-emerald-500/20">
-                    <span>INICIAR PARTIDA</span>
-                  </button>
-                </div>
+              @if (roomData()?.status === 'PLAYING') {
+                <app-bingo 
+                  [isHost]="isHost()" 
+                  [roomId]="roomId" 
+                  [initialCard]="userCard()"
+                  [winningModes]="roomData()?.winning_modes || ['FULL']">
+                </app-bingo>
 
               } @else {
-                <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6 animate-pulse">
-                   <p class="text-slate-400 text-lg">O Organizador vai começar em breve...</p>
+                <div class="flex flex-col items-center text-center">
+                  <h2 class="text-3xl font-bold mb-6">Sala de {{ roomData()?.game_type }}</h2>
+                  
+                  @if (isHost()) {
+                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg mb-6 shadow-xl">
+                      
+                      <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4 mb-6 group cursor-pointer" (click)="copyRoomCode()">
+                        <div class="text-left">
+                          <p class="text-xs text-slate-500 font-bold uppercase">Compartilhe o código</p>
+                          <p class="text-4xl font-mono font-black text-white tracking-widest">{{ roomId }}</p>
+                        </div>
+                        <lucide-icon [img]="copied() ? Check : Copy" class="w-6 h-6 text-indigo-500"></lucide-icon>
+                      </div>
+
+                      <div class="text-left mb-6">
+                        <p class="text-xs text-slate-400 font-bold uppercase mb-3 flex items-center gap-2">
+                          <lucide-icon [img]="Settings" class="w-3 h-3"></lucide-icon> Modos de Vitória
+                        </p>
+                        <div class="grid grid-cols-2 gap-3">
+                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
+                            <input type="checkbox" [checked]="hasMode('FULL')" (change)="toggleMode('FULL')" class="w-4 h-4 accent-indigo-500">
+                            <span class="text-sm font-bold">Cartela Cheia</span>
+                          </label>
+                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
+                            <input type="checkbox" [checked]="hasMode('LINE')" (change)="toggleMode('LINE')" class="w-4 h-4 accent-indigo-500">
+                            <span class="text-sm font-bold">Linha</span>
+                          </label>
+                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
+                            <input type="checkbox" [checked]="hasMode('COLUMN')" (change)="toggleMode('COLUMN')" class="w-4 h-4 accent-indigo-500">
+                            <span class="text-sm font-bold">Coluna</span>
+                          </label>
+                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
+                            <input type="checkbox" [checked]="hasMode('DIAGONAL')" (change)="toggleMode('DIAGONAL')" class="w-4 h-4 accent-indigo-500">
+                            <span class="text-sm font-bold">Diagonal</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <button (click)="startGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
+                        <lucide-icon [img]="Trophy" class="w-5 h-5"></lucide-icon> INICIAR PARTIDA
+                      </button>
+                    </div>
+
+                  } @else {
+                    <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6 animate-pulse max-w-md mx-auto">
+                       <p class="text-slate-400 text-lg">Aguardando o Organizador configurar e iniciar...</p>
+                    </div>
+                  }
+                  
+                  <div class="w-full max-w-2xl mt-4">
+                     <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center">Jogadores Conectados</h3>
+                     <div class="flex flex-wrap gap-2 justify-center">
+                        @for (p of players(); track p.id) {
+                          <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2 animate-fade-in">
+                            <span class="w-2 h-2 rounded-full" [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500' : 'bg-green-500'"></span>
+                            <span class="font-bold text-sm text-slate-200">
+                              {{ p.username }} 
+                              @if(p.id === currentUser()?.id) { (Você) }
+                            </span>
+                          </div>
+                        }
+                     </div>
+                  </div>
                 </div>
               }
             </div>
 
-            <div class="w-full mb-24">
-               <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center">Jogadores na Sala</h3>
-               <div class="flex flex-wrap gap-2 justify-center">
-                  @for (p of players(); track p.id) {
-                    <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full" [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500' : 'bg-green-500'"></span>
-                      <span class="font-bold text-sm text-slate-200">{{ p.username }}</span>
-                    </div>
-                  }
-               </div>
+            <div class="lg:col-span-1">
+              <div class="sticky top-20">
+                <app-chat 
+                  [roomId]="roomId" 
+                  [isHost]="isHost()" 
+                  [isOpen]="roomData()?.chat_open"
+                  [currentUserId]="currentUser()?.id"
+                  [currentUsername]="currentUser()?.user_metadata.username || 'Convidado'">
+                </app-chat>
+              </div>
             </div>
-          }
+
+          </div>
         }
       </main>
     </div>
@@ -103,6 +151,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   readonly Trophy = Trophy;
   readonly Copy = Copy;
   readonly Check = Check;
+  readonly Settings = Settings;
 
   roomId = '';
   loading = signal(true);
@@ -111,10 +160,11 @@ export class RoomComponent implements OnInit, OnDestroy {
   roomData = signal<any>(null);
   players = signal<any[]>([]);
   currentUser = signal<any>(null);
+  userCard = signal<number[]>([]); // SINAL PARA GUARDAR A CARTELA
   
-  isHost = computed(() => {
-    return this.currentUser()?.id === this.roomData()?.host_id;
-  });
+  selectedModes = signal<string[]>(['FULL']);
+
+  isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
 
   private channel: RealtimeChannel | null = null;
 
@@ -132,25 +182,48 @@ export class RoomComponent implements OnInit, OnDestroy {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       this.currentUser.set(user);
 
-      // Pega dados da sala
-      const { data: room, error } = await this.supabase.client
-        .from('rooms')
-        .select('*')
-        .eq('code', this.roomId)
-        .single();
-      
+      const { data: room, error } = await this.supabase.client.from('rooms').select('*').eq('code', this.roomId).single();
       if (error) throw error;
+      
       this.roomData.set(room);
+      if (room.winning_modes) this.selectedModes.set(room.winning_modes);
 
+      // --- LOGICA DA CARTELA ÚNICA ---
       if (user) {
-        await this.supabase.client.from('room_players').upsert({
-          room_code: this.roomId,
-          user_id: user.id
-        });
+        // 1. Verifica se já tenho cartela
+        const { data: existingPlayer } = await this.supabase.client
+          .from('room_players')
+          .select('card')
+          .eq('room_code', this.roomId)
+          .eq('user_id', user.id)
+          .single();
+
+        let myCard = existingPlayer?.card;
+
+        if (!existingPlayer) {
+          // 2. Se não tenho, peço pro banco gerar (CARTELA UNICA)
+          const { data: uniqueCard, error: rpcError } = await this.supabase.client
+            .rpc('generate_unique_card', { room_code_param: this.roomId });
+
+          if (rpcError) throw rpcError;
+          myCard = uniqueCard;
+
+          // 3. Salvo minha entrada no banco com a cartela
+          await this.supabase.client.from('room_players').insert({
+             room_code: this.roomId,
+             user_id: user.id,
+             card: myCard
+          });
+        }
+        
+        // Guardo no sinal para passar pro Bingo
+        if (myCard) this.userCard.set(myCard);
       }
+
       this.fetchPlayers();
       this.setupRealtime();
     } catch (err) {
+      console.error(err);
       this.router.navigate(['/lobby']);
     } finally {
       this.loading.set(false);
@@ -164,22 +237,32 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   setupRealtime() {
     this.channel = this.supabase.client.channel(`room_${this.roomId}`)
-      // Escuta novos jogadores
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_players', filter: `room_code=eq.${this.roomId}` }, () => {
-        this.fetchPlayers();
-      })
-      // Escuta mudanças na SALA (Ex: Status mudou para PLAYING)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_players', filter: `room_code=eq.${this.roomId}` }, () => this.fetchPlayers())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload) => {
-        this.roomData.set(payload.new); // Atualiza os dados da sala instantaneamente
+        this.roomData.set(payload.new);
       })
       .subscribe();
   }
 
-  // FUNÇÃO QUE INICIA O JOGO
+  hasMode(mode: string) { return this.selectedModes().includes(mode); }
+  
+  toggleMode(mode: string) {
+    const current = this.selectedModes();
+    if (current.includes(mode)) {
+      this.selectedModes.set(current.filter(m => m !== mode));
+    } else {
+      this.selectedModes.set([...current, mode]);
+    }
+  }
+
   async startGame() {
     await this.supabase.client
       .from('rooms')
-      .update({ status: 'PLAYING' })
+      .update({ 
+        status: 'PLAYING', 
+        winning_modes: this.selectedModes(),
+        chat_open: false 
+      })
       .eq('code', this.roomId);
   }
 

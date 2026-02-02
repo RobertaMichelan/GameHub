@@ -11,7 +11,15 @@ import { RealtimeChannel } from '@supabase/supabase-js';
     <div class="flex flex-col items-center w-full max-w-2xl mx-auto p-4">
       
       <div class="mb-6 text-center w-full">
-        <h2 class="text-4xl font-black text-yellow-400 drop-shadow-lg tracking-wider mb-4">BINGO</h2>
+        <h2 class="text-4xl font-black text-yellow-400 drop-shadow-lg tracking-wider mb-2">BINGO</h2>
+        
+        <div class="flex justify-center gap-2 mb-4 flex-wrap">
+          @for (mode of winningModes; track $index) {
+            <span class="bg-indigo-900 text-indigo-200 text-[10px] px-2 py-1 rounded border border-indigo-700 font-bold uppercase">
+              {{ translateMode(mode) }}
+            </span>
+          }
+        </div>
         
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full relative overflow-hidden">
            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse"></div>
@@ -47,7 +55,6 @@ import { RealtimeChannel } from '@supabase/supabase-js';
       </div>
 
       <div class="bg-white p-3 rounded-xl shadow-2xl w-full max-w-sm aspect-[4/5] relative">
-        
         <div class="grid grid-cols-5 gap-1 mb-2 text-center">
           <div class="font-black text-2xl text-red-600">B</div>
           <div class="font-black text-2xl text-red-600">I</div>
@@ -81,7 +88,6 @@ import { RealtimeChannel } from '@supabase/supabase-js';
             BINGO! 🏆
           </button>
         </div>
-
       </div>
     </div>
   `
@@ -89,6 +95,8 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 export class BingoComponent implements OnInit, OnDestroy {
   @Input() isHost = false;
   @Input() roomId = '';
+  @Input() winningModes: string[] = [];
+  @Input() initialCard: number[] = []; // RECEBE A CARTELA DO DB
   
   supabase = inject(SupabaseService);
   channel: RealtimeChannel | null = null;
@@ -99,7 +107,14 @@ export class BingoComponent implements OnInit, OnDestroy {
   marked = signal<boolean[]>(new Array(25).fill(false));
 
   ngOnInit() {
-    this.generateCard();
+    // 1. Usa a cartela que veio do banco (se existir)
+    if (this.initialCard && this.initialCard.length > 0) {
+      this.cardNumbers.set(this.initialCard);
+      const newMarks = new Array(25).fill(false);
+      newMarks[12] = true; // Free
+      this.marked.set(newMarks);
+    }
+    
     this.setupRealtime();
   }
 
@@ -108,16 +123,13 @@ export class BingoComponent implements OnInit, OnDestroy {
   }
 
   setupRealtime() {
-    // Conecta no canal da sala para ouvir os eventos do jogo
     this.channel = this.supabase.client.channel(`room_${this.roomId}`);
     
     this.channel
       .on('broadcast', { event: 'bingo_draw' }, ({ payload }) => {
-        // Quando o Host sorteia, todos recebem aqui
         this.updateGameRequest(payload.number);
       })
       .on('broadcast', { event: 'bingo_shout' }, ({ payload }) => {
-        // Alguém gritou bingo!
         alert(`🎉 O JOGADOR ${payload.username} GRITOU BINGO! Conferiram a cartela?`);
       })
       .subscribe();
@@ -126,24 +138,19 @@ export class BingoComponent implements OnInit, OnDestroy {
   updateGameRequest(num: number) {
     this.lastNumber.set(num);
     this.history.update(h => [...h, num]);
-    
-    // Toca um somzinho (opcional/futuro) ou vibra o celular
-    if (navigator.vibrate) navigator.vibrate(200);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(200);
   }
 
-  // Lógica do Host: Sorteia e avisa a todos
   async drawNumber() {
     if (!this.isHost) return;
 
     let num;
     do {
       num = Math.floor(Math.random() * 75) + 1;
-    } while (this.history().includes(num)); // Garante que não repete
+    } while (this.history().includes(num)); 
 
-    // Atualiza a tela do Host imediatamente
     this.updateGameRequest(num);
 
-    // Envia para todos via WebSocket (Rápido!)
     await this.channel?.send({
       type: 'broadcast',
       event: 'bingo_draw',
@@ -151,42 +158,47 @@ export class BingoComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Lógica do Jogador: Grita Bingo
+  // --- LÓGICA DO VENCEDOR ÚNICO ---
   async shoutBingo() {
-    const { data } = await this.supabase.client.auth.getUser();
-    const username = data.user?.user_metadata['username'] || 'Alguém';
+    // 1. Verifica se já tem ganhador antes de tentar
+    const { data: room } = await this.supabase.client
+        .from('rooms')
+        .select('winner_id')
+        .eq('code', this.roomId)
+        .single();
 
-    await this.channel?.send({
-      type: 'broadcast',
-      event: 'bingo_shout',
-      payload: { username: username }
-    });
-  }
-
-  // Gera Cartela
-  generateCard() {
-    const card: number[] = [];
-    const ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
-
-    for (let i = 0; i < 5; i++) { 
-      for (let j = 0; j < 5; j++) { 
-        if (i === 2 && j === 2) {
-          card.push(0); 
-        } else {
-          const min = ranges[j][0];
-          const max = ranges[j][1];
-          let num;
-          do {
-            num = Math.floor(Math.random() * (max - min + 1)) + min;
-          } while (card.includes(num));
-          card.push(num);
-        }
-      }
+    if (room && room.winner_id) {
+        alert("⏳ Tarde demais! Outro jogador já bateu.");
+        return; 
     }
-    this.cardNumbers.set(card);
-    const newMarks = [...this.marked()];
-    newMarks[12] = true;
-    this.marked.set(newMarks);
+
+    const { data: user } = await this.supabase.client.auth.getUser();
+    
+    // 2. Tenta gravar no banco. Só funciona se winner_id ainda for NULL.
+    const { data, error } = await this.supabase.client
+        .from('rooms')
+        .update({ 
+            status: 'FINISHED', 
+            winner_id: user.user?.id,
+            chat_open: true 
+        })
+        .eq('code', this.roomId)
+        .is('winner_id', null) // O PULO DO GATO: Só atualiza se estiver vazio
+        .select();
+
+    if (data && data.length > 0) {
+        // EU VENCI!
+        const username = user.user?.user_metadata['username'] || 'Alguém';
+        await this.channel?.send({
+            type: 'broadcast',
+            event: 'bingo_shout',
+            payload: { username: username }
+        });
+        alert("PARABÉNS! Você registrou o Bingo primeiro! 🏆");
+    } else {
+        // PERDI A CORRIDA
+        alert("⏳ Tarde demais! Outro jogador bateu milissegundos antes.");
+    }
   }
 
   toggleMark(index: number) {
@@ -194,5 +206,15 @@ export class BingoComponent implements OnInit, OnDestroy {
     const current = this.marked();
     current[index] = !current[index];
     this.marked.set([...current]);
+  }
+
+  translateMode(mode: string) {
+    const map: any = { 
+      'FULL': 'Cartela Cheia', 
+      'LINE': 'Linha', 
+      'COLUMN': 'Coluna', 
+      'DIAGONAL': 'Diagonal' 
+    };
+    return map[mode] || mode;
   }
 }

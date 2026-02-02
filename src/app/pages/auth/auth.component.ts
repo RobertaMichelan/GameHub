@@ -13,10 +13,12 @@ import { LucideAngularModule, LogIn, UserPlus, Ghost } from 'lucide-angular';
     <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div class="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
         
-        <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold text-white mb-2">GameHub 🎮</h1>
-          <p class="text-slate-400">Sua plataforma de jogos multiplayer</p>
-        </div>
+   
+<div class="text-center mb-8">
+  <h1 class="text-3xl font-bold text-white mb-2">Final Game 🎮</h1>
+  <p class="text-slate-400">Sua plataforma de jogos multiplayer</p>
+</div>
+
 
         <div class="flex bg-slate-800 p-1 rounded-xl mb-6">
           <button (click)="isLogin.set(true)" 

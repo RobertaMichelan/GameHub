@@ -1,79 +1,128 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { LucideAngularModule, User, Mail, Lock, Calendar, AlertCircle } from 'lucide-angular';
+import { LucideAngularModule, LogIn, UserPlus, Ghost } from 'lucide-angular';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
   imports: [CommonModule, FormsModule, LucideAngularModule],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-slate-950 p-4 text-white">
-      <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+    <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div class="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
         
         <div class="text-center mb-8">
-          <h1 class="text-3xl font-black text-indigo-500 mb-2">GameHub</h1>
-          <p class="text-slate-400">Entre para jogar.</p>
+          <h1 class="text-3xl font-bold text-white mb-2">GameHub 🎮</h1>
+          <p class="text-slate-400">Sua plataforma de jogos multiplayer</p>
         </div>
 
-        <div class="flex bg-slate-950 p-1 rounded-lg mb-6">
-          <button (click)="mode.set('LOGIN')" 
-            [class]="mode() === 'LOGIN' ? 'bg-indigo-600 text-white' : 'text-slate-500'"
-            class="flex-1 py-2 rounded font-bold transition-all">Entrar</button>
-          <button (click)="mode.set('REGISTER')" 
-            [class]="mode() === 'REGISTER' ? 'bg-indigo-600 text-white' : 'text-slate-500'"
-            class="flex-1 py-2 rounded font-bold transition-all">Cadastrar</button>
+        <div class="flex bg-slate-800 p-1 rounded-xl mb-6">
+          <button (click)="isLogin.set(true)" 
+            [class]="isLogin() ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+            class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">
+            ENTRAR
+          </button>
+          <button (click)="isLogin.set(false)" 
+            [class]="!isLogin() ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'"
+            class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">
+            CADASTRAR
+          </button>
         </div>
 
-        <form (submit)="handleSubmit($event)" class="space-y-4">
-          
-          @if (mode() === 'REGISTER') {
-            <input [(ngModel)]="form.fullName" name="name" type="text" placeholder="Nome Completo" required class="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white">
-            <input [(ngModel)]="form.username" name="user" type="text" placeholder="Nome de Usuário (@unico)" required class="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white">
-            <input [(ngModel)]="form.birthDate" name="birth" type="date" required class="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white">
-          }
+        <form (submit)="handleSubmit()" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+            <input [(ngModel)]="email" name="email" type="email" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-indigo-500 transition-colors" placeholder="seu@email.com">
+          </div>
 
-          <input [(ngModel)]="form.email" name="email" type="email" placeholder="E-mail" required class="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white">
-          <input [(ngModel)]="form.password" name="pass" type="password" placeholder="Senha" required minlength="6" class="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Senha</label>
+            <input [(ngModel)]="password" name="password" type="password" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-indigo-500 transition-colors" placeholder="••••••••">
+          </div>
 
-          @if (errorMessage()) {
-            <div class="text-red-400 text-sm bg-red-900/20 p-3 rounded border border-red-900/50">
-              {{ errorMessage() }}
+          @if (!isLogin()) {
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Nome de Usuário</label>
+              <input [(ngModel)]="username" name="username" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-indigo-500 transition-colors" placeholder="Ex: MestreDosJogos">
             </div>
           }
 
-          <button type="submit" [disabled]="auth.loading()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded transition-all disabled:opacity-50">
-            {{ auth.loading() ? 'Processando...' : (mode() === 'LOGIN' ? 'ENTRAR' : 'CRIAR CONTA') }}
+          <button type="submit" [disabled]="loading()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (loading()) {
+              <span>Carregando...</span>
+            } @else {
+              <lucide-icon [img]="isLogin() ? LogIn : UserPlus" class="w-5 h-5"></lucide-icon>
+              {{ isLogin() ? 'ACESSAR CONTA' : 'CRIAR CONTA' }}
+            }
           </button>
         </form>
+        
+        <div class="relative flex items-center py-6">
+          <div class="flex-grow border-t border-slate-700"></div>
+          <span class="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase">OU</span>
+          <div class="flex-grow border-t border-slate-700"></div>
+        </div>
+
+        <button (click)="guestLogin()" [disabled]="loading()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+          <lucide-icon [img]="Ghost" class="w-5 h-5"></lucide-icon>
+          JOGAR COMO CONVIDADO
+        </button>
 
       </div>
     </div>
   `
 })
 export class AuthComponent {
-  auth = inject(AuthService);
-  mode = signal<'LOGIN' | 'REGISTER'>('LOGIN');
-  errorMessage = signal('');
+  authService = inject(AuthService);
+  router = inject(Router);
+
+  isLogin = signal(true);
+  loading = signal(false);
   
-  form = { email: '', password: '', username: '', fullName: '', birthDate: '' };
+  email = '';
+  password = '';
+  username = '';
 
-  async handleSubmit(e: Event) {
-    e.preventDefault();
-    this.errorMessage.set('');
+  readonly LogIn = LogIn;
+  readonly UserPlus = UserPlus;
+  readonly Ghost = Ghost;
 
-    if (this.mode() === 'LOGIN') {
-      const res = await this.auth.signIn(this.form.email, this.form.password);
-      if (res.error) this.errorMessage.set(res.error);
-    } else {
-      const res = await this.auth.signUp({
-        email: this.form.email, pass: this.form.password,
-        username: this.form.username, fullName: this.form.fullName, birthDate: this.form.birthDate
-      });
-      if (res.error) this.errorMessage.set(res.error);
-      else { alert('Sucesso! Verifique seu e-mail.'); this.mode.set('LOGIN'); }
+  async handleSubmit() {
+    this.loading.set(true);
+    try {
+      if (this.isLogin()) {
+        const { error } = await this.authService.signIn(this.email, this.password);
+        if (error) throw error;
+      } else {
+        const { error } = await this.authService.signUp(this.email, this.password, this.username);
+        if (error) throw error;
+      }
+      this.router.navigate(['/lobby']);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async guestLogin() {
+    this.loading.set(true);
+    try {
+      const rand = Math.floor(Math.random() * 100000);
+      const guestEmail = `convidado${rand}@temp.gamehub`;
+      const guestPass = `guest${rand}!Pass`;
+      const guestName = `Convidado ${rand}`;
+
+      const { error } = await this.authService.signUp(guestEmail, guestPass, guestName);
+      if (error) throw error;
+      
+      this.router.navigate(['/lobby']);
+    } catch (error: any) {
+      alert('Erro ao entrar como convidado: ' + error.message);
+    } finally {
+      this.loading.set(false);
     }
   }
 }

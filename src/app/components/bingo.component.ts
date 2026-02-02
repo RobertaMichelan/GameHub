@@ -96,7 +96,7 @@ export class BingoComponent implements OnInit, OnDestroy {
   @Input() isHost = false;
   @Input() roomId = '';
   @Input() winningModes: string[] = [];
-  @Input() initialCard: number[] = []; // RECEBE A CARTELA DO DB
+  @Input() initialCard: number[] = []; 
   
   supabase = inject(SupabaseService);
   channel: RealtimeChannel | null = null;
@@ -107,11 +107,10 @@ export class BingoComponent implements OnInit, OnDestroy {
   marked = signal<boolean[]>(new Array(25).fill(false));
 
   ngOnInit() {
-    // 1. Usa a cartela que veio do banco (se existir)
     if (this.initialCard && this.initialCard.length > 0) {
       this.cardNumbers.set(this.initialCard);
       const newMarks = new Array(25).fill(false);
-      newMarks[12] = true; // Free
+      newMarks[12] = true; 
       this.marked.set(newMarks);
     }
     
@@ -130,6 +129,7 @@ export class BingoComponent implements OnInit, OnDestroy {
         this.updateGameRequest(payload.number);
       })
       .on('broadcast', { event: 'bingo_shout' }, ({ payload }) => {
+        // Alerta na tela de todo mundo
         alert(`🎉 O JOGADOR ${payload.username} GRITOU BINGO! Conferiram a cartela?`);
       })
       .subscribe();
@@ -158,47 +158,26 @@ export class BingoComponent implements OnInit, OnDestroy {
     });
   }
 
-  // --- LÓGICA DO VENCEDOR ÚNICO ---
+  // --- MUDANÇA AQUI: Bingo Manual ---
   async shoutBingo() {
-    // 1. Verifica se já tem ganhador antes de tentar
-    const { data: room } = await this.supabase.client
-        .from('rooms')
-        .select('winner_id')
-        .eq('code', this.roomId)
-        .single();
-
-    if (room && room.winner_id) {
-        alert("⏳ Tarde demais! Outro jogador já bateu.");
-        return; 
-    }
-
     const { data: user } = await this.supabase.client.auth.getUser();
-    
-    // 2. Tenta gravar no banco. Só funciona se winner_id ainda for NULL.
-    const { data, error } = await this.supabase.client
-        .from('rooms')
-        .update({ 
-            status: 'FINISHED', 
-            winner_id: user.user?.id,
-            chat_open: true 
-        })
-        .eq('code', this.roomId)
-        .is('winner_id', null) // O PULO DO GATO: Só atualiza se estiver vazio
-        .select();
+    const username = user.user?.user_metadata['username'] || 'Alguém';
 
-    if (data && data.length > 0) {
-        // EU VENCI!
-        const username = user.user?.user_metadata['username'] || 'Alguém';
-        await this.channel?.send({
-            type: 'broadcast',
-            event: 'bingo_shout',
-            payload: { username: username }
-        });
-        alert("PARABÉNS! Você registrou o Bingo primeiro! 🏆");
-    } else {
-        // PERDI A CORRIDA
-        alert("⏳ Tarde demais! Outro jogador bateu milissegundos antes.");
-    }
+    // 1. Avisa geral que teve Bingo (via Socket)
+    await this.channel?.send({
+      type: 'broadcast',
+      event: 'bingo_shout',
+      payload: { username: username }
+    });
+
+    // 2. Reabre o Chat para conferência
+    await this.supabase.client
+        .from('rooms')
+        .update({ chat_open: true }) 
+        .eq('code', this.roomId);
+        
+    // 3. Alerta local
+    alert(`📢 Você gritou BINGO! Aguarde a conferência.`);
   }
 
   toggleMark(index: number) {

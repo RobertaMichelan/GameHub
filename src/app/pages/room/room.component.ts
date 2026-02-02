@@ -260,14 +260,27 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   async startGame() {
-    await this.supabase.client
-      .from('rooms')
-      .update({ 
-        status: 'PLAYING', 
-        winning_modes: this.selectedModes(),
-        chat_open: false 
-      })
-      .eq('code', this.roomId);
+    try {
+        // 1. Limpa as mensagens antigas dessa sala
+        await this.supabase.client
+          .from('messages')
+          .delete()
+          .eq('room_code', this.roomId);
+
+        // 2. Atualiza o status da sala e fecha o chat
+        await this.supabase.client
+          .from('rooms')
+          .update({ 
+            status: 'PLAYING', 
+            winning_modes: this.selectedModes(),
+            chat_open: false 
+          })
+          .eq('code', this.roomId);
+          
+    } catch (error: any) { // <--- A CORREÇÃO ESTÁ AQUI (: any)
+        console.error(error);
+        alert('Erro ao iniciar partida: ' + (error.message || 'Erro desconhecido'));
+    }
   }
 
   leaveRoom() { this.router.navigate(['/lobby']); }

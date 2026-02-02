@@ -65,7 +65,7 @@ import { LucideAngularModule, LogIn, UserPlus, Ghost } from 'lucide-angular';
           <div class="flex-grow border-t border-slate-700"></div>
         </div>
 
-        <button (click)="guestLogin()" [disabled]="loading()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+        <button (click)="guestLogin()" [disabled]="loading()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-slate-700/50">
           <lucide-icon [img]="Ghost" class="w-5 h-5"></lucide-icon>
           JOGAR COMO CONVIDADO
         </button>
@@ -101,7 +101,7 @@ export class AuthComponent {
       }
       this.router.navigate(['/lobby']);
     } catch (error: any) {
-      alert(error.message);
+      alert('Erro: ' + error.message);
     } finally {
       this.loading.set(false);
     }
@@ -110,17 +110,31 @@ export class AuthComponent {
   async guestLogin() {
     this.loading.set(true);
     try {
-      const rand = Math.floor(Math.random() * 100000);
-      const guestEmail = `convidado${rand}@temp.gamehub`;
-      const guestPass = `guest${rand}!Pass`;
-      const guestName = `Convidado ${rand}`;
+      // Gera dados aleatórios para o convidado
+      const rand = Math.floor(Math.random() * 1000000);
+      const guestEmail = `convidado${rand}@gamehub.temp`; // Email falso
+      const guestPass = `guestpass${rand}`; // Senha falsa
+      const guestName = `Convidado ${Math.floor(Math.random() * 100)}`;
 
-      const { error } = await this.authService.signUp(guestEmail, guestPass, guestName);
-      if (error) throw error;
+      // Tenta cadastrar
+      const { data, error } = await this.authService.signUp(guestEmail, guestPass, guestName);
       
+      if (error) {
+        throw error;
+      }
+
+      // Se cadastrou mas não logou (acontece se Confirm Email estiver ligado), tenta logar
+      if (!data.session) {
+         const login = await this.authService.signIn(guestEmail, guestPass);
+         if (login.error) throw new Error('Falha ao logar automático. Verifique se "Confirm Email" está desligado no Supabase.');
+      }
+      
+      // Sucesso
       this.router.navigate(['/lobby']);
+      
     } catch (error: any) {
-      alert('Erro ao entrar como convidado: ' + error.message);
+      console.error(error);
+      alert('Não foi possível entrar como convidado: ' + error.message);
     } finally {
       this.loading.set(false);
     }

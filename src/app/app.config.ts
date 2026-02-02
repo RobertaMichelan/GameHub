@@ -1,11 +1,11 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
-import { provideRouter, withHashLocation } from '@angular/router'; // <--- Importamos isso
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter, withHashLocation } from '@angular/router';
 import { routes } from './app.routes';
 import { provideHttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    // Aqui ativamos o "withHashLocation" para consertar o erro da Vercel
+    // O 'withHashLocation()' é o que cria a cerquilha # no link
     provideRouter(routes, withHashLocation()), 
     provideHttpClient()
   ]

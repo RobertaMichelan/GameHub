@@ -2,7 +2,7 @@ import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { LucideAngularModule, Home, Users, Trophy, Link, Copy } from 'lucide-angular'; // Adicionei Link e Copy
+import { LucideAngularModule, Home, Users, Trophy, Copy, Check } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 @Component({
@@ -14,16 +14,16 @@ import { RealtimeChannel } from '@supabase/supabase-js';
       
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Voltar">
+          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Voltar ao Lobby">
             <lucide-icon [img]="Home" class="w-5 h-5"></lucide-icon>
           </button>
           
           <div class="h-8 w-[1px] bg-slate-700"></div>
           
-          <button (click)="copyRoomCode()" class="text-left group" title="Clique para copiar código">
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest group-hover:text-indigo-400 transition-colors">SALA</p>
-            <h1 class="text-xl font-mono font-bold text-indigo-400 tracking-wider leading-none group-hover:text-white transition-colors">{{ roomId }}</h1>
-          </button>
+          <div class="flex flex-col">
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">CÓDIGO</p>
+            <h1 class="text-xl font-mono font-bold text-indigo-400 tracking-wider leading-none">{{ roomId }}</h1>
+          </div>
         </div>
 
         <div class="flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
@@ -42,61 +42,75 @@ import { RealtimeChannel } from '@supabase/supabase-js';
         } 
         
         @else {
-          <div class="text-center mb-8 mt-8 w-full max-w-lg">
-            <div class="inline-flex p-4 bg-slate-900 rounded-2xl mb-4 shadow-xl border border-slate-800 text-4xl">
-              🎮
-            </div>
+          <div class="text-center mb-8 mt-4 w-full max-w-lg">
+            
             <h2 class="text-3xl font-bold mb-2">Sala de {{ roomData()?.game_type }}</h2>
             
             @if (isHost()) {
-              <p class="text-emerald-400 font-bold mb-6">👑 Você é o Organizador!</p>
-              
-              <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col gap-3 mb-6 shadow-lg">
-                <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Convide seus amigos</p>
-                <div class="flex gap-2">
-                  <div class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-400 text-sm truncate font-mono flex items-center">
-                    {{ shareableLink }}
+              <div class="bg-indigo-900/20 border border-indigo-500/30 p-6 rounded-2xl mb-6 mt-6 shadow-2xl shadow-indigo-900/20">
+                <p class="text-indigo-300 font-bold mb-4 flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                  <lucide-icon [img]="Trophy" class="w-4 h-4"></lucide-icon> 
+                  Para convidar seus amigos:
+                </p>
+                
+                <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center gap-4 relative overflow-hidden group">
+                  <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <span class="text-slate-500 text-xs font-bold uppercase">Compartilhe este código</span>
+                  
+                  <div class="text-6xl font-mono font-black text-white tracking-widest select-all cursor-pointer" (click)="copyRoomCode()">
+                    {{ roomId }}
                   </div>
-                  <button (click)="copyLink()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-lg font-bold flex items-center gap-2 transition-colors">
-                    <lucide-icon [img]="Link" class="w-4 h-4"></lucide-icon>
-                    COPIAR
+
+                  <button (click)="copyRoomCode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2 transition-transform active:scale-95 shadow-lg">
+                    <lucide-icon [img]="copied() ? Check : Copy" class="w-4 h-4"></lucide-icon>
+                    {{ copied() ? 'COPIADO!' : 'COPIAR CÓDIGO' }}
                   </button>
                 </div>
+                
+                <p class="text-slate-500 text-xs mt-4">Peça para eles digitarem no menu "Entrar"</p>
+              </div>
+
+              <div class="fixed bottom-8 px-4 z-50 left-0 right-0 flex justify-center">
+                <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform hover:scale-105 transition-all text-lg flex items-center gap-2 shadow-emerald-500/20">
+                  <span>INICIAR PARTIDA</span>
+                </button>
               </div>
 
             } @else {
-              <p class="text-slate-400">Aguardando o Organizador iniciar a partida...</p>
+              <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6">
+                 <p class="text-slate-400 text-lg">Aguardando o Organizador iniciar...</p>
+                 <div class="mt-4 flex justify-center">
+                    <div class="animate-bounce text-2xl">⏳</div>
+                 </div>
+              </div>
             }
           </div>
 
           <div class="w-full mb-24">
              <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center flex items-center justify-center gap-2">
-               Jogadores Conectados <span class="bg-slate-800 text-slate-300 px-2 rounded-full text-[10px]">{{ players().length }}</span>
+               Jogadores na Sala <span class="bg-slate-800 text-slate-300 px-2 rounded-full text-[10px]">{{ players().length }}</span>
              </h3>
              
              <div class="flex flex-wrap gap-2 justify-center">
                 @for (p of players(); track p.id) {
                   <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2 animate-fade-in shadow-sm">
-                    <span class="w-2 h-2 rounded-full" [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500' : 'bg-green-500'"></span>
-                    <span class="font-bold text-sm text-slate-200">{{ p.username }}</span>
+                    <span class="w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
+                          [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-green-500 shadow-green-500/50'"></span>
+                    
+                    <span class="font-bold text-sm text-slate-200">
+                      {{ p.username }} 
+                      @if(p.id === currentUser()?.id) { <span class="text-slate-500 font-normal">(Você)</span> }
+                    </span>
+                    
                     @if (p.id === roomData()?.host_id) {
-                      <span class="text-[10px] text-yellow-500 border border-yellow-500/30 px-1 rounded ml-1">HOST</span>
+                      <lucide-icon [img]="Trophy" class="w-3 h-3 text-yellow-500 ml-1"></lucide-icon>
                     }
                   </div>
                 }
              </div>
           </div>
-
-          @if (isHost()) {
-            <div class="fixed bottom-8 px-4 z-50">
-              <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform hover:scale-105 transition-all text-lg flex items-center gap-2 shadow-emerald-500/20">
-                <span>INICIAR PARTIDA</span>
-                <lucide-icon [img]="Trophy" class="w-5 h-5"></lucide-icon>
-              </button>
-            </div>
-          }
         }
-
       </main>
     </div>
   `
@@ -109,11 +123,13 @@ export class RoomComponent implements OnInit, OnDestroy {
   readonly Home = Home;
   readonly Users = Users;
   readonly Trophy = Trophy;
-  readonly Link = Link;
   readonly Copy = Copy;
+  readonly Check = Check;
 
   roomId = '';
   loading = signal(true);
+  copied = signal(false); // Para mudar o ícone do botão
+  
   roomData = signal<any>(null);
   players = signal<any[]>([]);
   currentUser = signal<any>(null);
@@ -123,11 +139,6 @@ export class RoomComponent implements OnInit, OnDestroy {
     const room = this.roomData();
     return user && room && user.id === room.host_id;
   });
-
-  // Gera o link completo da sala
-  get shareableLink() {
-    return window.location.href;
-  }
 
   private channel: RealtimeChannel | null = null;
 
@@ -194,17 +205,11 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   leaveRoom() { this.router.navigate(['/lobby']); }
 
-  // Função para Copiar Link
-  copyLink() {
-    navigator.clipboard.writeText(this.shareableLink).then(() => {
-      alert('Link copiado! Mande para seus amigos.');
-    });
-  }
-
-  // Função para Copiar só o código
   copyRoomCode() {
     navigator.clipboard.writeText(this.roomId).then(() => {
-      alert('Código copiado: ' + this.roomId);
+      // Animação de sucesso
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
     });
   }
 }

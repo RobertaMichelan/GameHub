@@ -1,11 +1,12 @@
-import { ApplicationConfig } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { routes } from './app.routes'; // <--- Importante
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { provideRouter, withHashLocation } from '@angular/router'; // <--- Importamos isso
+import { routes } from './app.routes';
 import { provideHttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes), // <--- Isso ativa as páginas
+    // Aqui ativamos o "withHashLocation" para consertar o erro da Vercel
+    provideRouter(routes, withHashLocation()), 
     provideHttpClient()
   ]
 };

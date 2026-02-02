@@ -222,9 +222,13 @@ export class RoomComponent implements OnInit, OnDestroy {
 
       this.fetchPlayers();
       this.setupRealtime();
-    } catch (err) {
-      console.error(err);
-      this.router.navigate(['/lobby']);
+    } catch (err: any) {
+      console.error('Erro ao conectar:', err);
+      // COMENTE A LINHA ABAIXO PARA NÃO EXPULSAR O JOGADOR:
+      // this.router.navigate(['/lobby']);
+      
+      // ADICIONE ISTO PARA VER O ERRO NA TELA:
+      alert("Erro ao entrar na sala: " + (err.message || JSON.stringify(err)));
     } finally {
       this.loading.set(false);
     }

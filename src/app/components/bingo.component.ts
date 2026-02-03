@@ -2,7 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
@@ -11,6 +11,40 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
   template: `
     <div class="flex flex-col items-center w-full max-w-2xl mx-auto p-4 pb-20 relative">
       
+      @if (showHistoryModal()) {
+        <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in p-4">
+          <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+             <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+                <div>
+                   <h3 class="text-white font-black text-xl flex items-center gap-2">
+                     <lucide-icon [img]="Grid3X3" class="w-5 h-5 text-indigo-500"></lucide-icon>
+                     Números Sorteados
+                   </h3>
+                   <p class="text-slate-400 text-xs">Total: {{ history().length }} / 75</p>
+                </div>
+                <button (click)="showHistoryModal.set(false)" class="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                   <lucide-icon [img]="X" class="w-6 h-6"></lucide-icon>
+                </button>
+             </div>
+
+             <div class="p-4 overflow-y-auto grid grid-cols-10 gap-1 sm:gap-2 justify-items-center">
+                @for (num of allNumbers; track num) {
+                   <div class="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold border transition-all"
+                        [ngClass]="history().includes(num) ? 'bg-indigo-600 text-white border-indigo-400 scale-110 shadow-lg' : 'bg-slate-800 text-slate-600 border-slate-800 opacity-50'">
+                      {{ num }}
+                   </div>
+                }
+             </div>
+             
+             <div class="p-4 border-t border-slate-800 bg-slate-950 rounded-b-2xl text-center">
+                <button (click)="showHistoryModal.set(false)" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold uppercase transition-colors">
+                   Voltar ao Jogo
+                </button>
+             </div>
+          </div>
+        </div>
+      }
+
       @if (nearWins() > 0 && !winnerName()) {
         <div class="fixed top-20 right-4 z-40 animate-bounce-in">
            <div class="bg-pink-600 text-white px-4 py-2 rounded-full shadow-xl border-2 border-pink-400 flex items-center gap-2 animate-pulse">
@@ -29,7 +63,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
               <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-2xl mb-4">BINGO!</h1>
               <p class="text-2xl text-white font-bold uppercase tracking-widest mb-6">Vencedor</p>
               <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-xl border-4 border-indigo-400 transform -rotate-2 mb-8 break-words">{{ winnerName() }}</div>
-              <button (click)="closeWinnerModal()" class="mt-8 bg-slate-800 hover:bg-slate-700 text-white py-3 px-8 rounded-xl font-bold uppercase">Fechar</button>
+              <button (click)="closeWinnerModal()" class="mt-8 bg-slate-800 text-white py-3 px-8 rounded-xl font-bold uppercase">Fechar</button>
            </div>
         </div>
       }
@@ -47,18 +81,53 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
 
       <div class="mb-6 text-center w-full">
         <h2 class="text-4xl font-black text-yellow-400 tracking-wider mb-2">BINGO</h2>
-        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full shadow-2xl">
+        
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full shadow-2xl relative overflow-hidden">
+           <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse"></div>
+           
            <p class="text-slate-400 text-xs font-bold uppercase mb-2">BOLA DA VEZ</p>
            <div class="flex justify-center items-center gap-4">
              <div class="w-24 h-24 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-full flex items-center justify-center border-4 border-slate-800 shadow-2xl transition-all" [ngClass]="{'scale-110': isAutoDrawing()}">
                 <span class="text-5xl font-black text-white">{{ lastNumber() || '?' }}</span>
              </div>
+
+             <div (click)="showHistoryModal.set(true)" class="hidden sm:flex flex-col gap-1 ml-4 cursor-pointer group" title="Ver todos os números sorteados">
+                <span class="text-[10px] uppercase font-bold text-slate-500 group-hover:text-indigo-400 transition-colors flex items-center gap-1">
+                  Anteriores <lucide-icon [img]="Grid3X3" class="w-3 h-3"></lucide-icon>
+                </span>
+                <div class="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                  @for (hist of history().slice(-4).reverse(); track $index) {
+                    <div class="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 text-xs font-bold text-slate-300 group-hover:border-indigo-500 group-hover:text-white">
+                      {{ hist }}
+                    </div>
+                  }
+                </div>
+             </div>
+           </div>
+            
+           <div class="sm:hidden mt-4">
+              <button (click)="showHistoryModal.set(true)" class="text-xs text-indigo-400 font-bold uppercase border border-indigo-500/30 px-3 py-1.5 rounded-full hover:bg-indigo-500/10 transition-colors flex items-center justify-center gap-2 mx-auto">
+                 <lucide-icon [img]="Grid3X3" class="w-3 h-3"></lucide-icon> Ver Sorteados ({{ history().length }})
+              </button>
            </div>
 
            @if (isHost && !winnerName()) {
-             <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3">
-               <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 text-white font-bold py-3 rounded-xl">SORTEAR MANUAL ({{ history().length }}/75)</button>
-               <button (click)="toggleAutoDraw()" [ngClass]="isAutoDrawing() ? 'bg-red-600 animate-pulse' : 'bg-emerald-600'" class="w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+             <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3 animate-fade-in">
+               
+               <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg active:scale-95 disabled:opacity-50">
+                 SORTEAR MANUAL
+               </button>
+
+               @if (!isAutoDrawing()) {
+                 <div class="flex justify-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                   <p class="text-[10px] text-slate-400 uppercase font-bold flex items-center mr-2">Velocidade:</p>
+                   @for (s of [2, 3, 4]; track s) {
+                     <button (click)="drawSpeed.set(s * 1000)" class="px-3 py-1 text-xs font-bold rounded transition-colors" [ngClass]="drawSpeed() === s * 1000 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'">{{ s }}s</button>
+                   }
+                 </div>
+               }
+
+               <button (click)="toggleAutoDraw()" [ngClass]="isAutoDrawing() ? 'bg-red-600 hover:bg-red-500 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-500'" class="w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-colors active:scale-95">
                  <lucide-icon [img]="isAutoDrawing() ? Pause : Play" class="w-5 h-5"></lucide-icon>
                  <span>{{ isAutoDrawing() ? 'PARAR AUTOMÁTICO' : 'INICIAR AUTOMÁTICO' }}</span>
                </button>
@@ -76,7 +145,8 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
           @for (letter of ['B','I','N','G','O']; track letter) { <div class="font-black text-2xl text-red-600">{{letter}}</div> }
         </div>
 
-        <div class="grid grid-cols-5 gap-2">
+        <div class="grid grid-cols-5 gap-2 min-h-[300px]">
+          @if (cardNumbers().length > 0) {
             @for (num of cardNumbers(); track $index) {
                 <button (click)="toggleMark($index)" 
                 class="aspect-square flex items-center justify-center font-bold text-lg sm:text-xl rounded-lg transition-all relative border-2 select-none"
@@ -89,11 +159,17 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
                     }
                 </button>
             }
+          } @else {
+             <div class="col-span-5 flex flex-col items-center justify-center text-slate-400 py-10 gap-2">
+                <div class="w-8 h-8 border-4 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></div>
+                <p class="text-xs font-bold">Carregando cartela...</p>
+             </div>
+          }
         </div>
 
         @if (!winnerName()) {
             <div class="mt-6">
-              <button (click)="checkBingo()" [disabled]="verifying()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 transition-all text-xl flex items-center justify-center gap-2">
+              <button (click)="checkBingo()" [disabled]="verifying()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 transition-all text-xl flex items-center justify-center gap-2 active:border-b-0 active:translate-y-1">
                 <lucide-icon [img]="Trophy" class="w-6 h-6"></lucide-icon>
                 {{ verifying() ? 'CONFERINDO...' : 'BINGO!' }}
               </button>
@@ -120,12 +196,18 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   verifying = signal(false);
   winnerName = signal<string | null>(null);
   showFalseAlarm = signal(false);
+  showHistoryModal = signal(false); // <--- Novo Estado para o Modal
+  
   isAutoDrawing = signal(false);
   drawSpeed = signal(4000); 
   nearWins = signal(0); 
 
+  // Gera array de 1 a 75 para o quadro de conferência
+  readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
+
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
+  readonly Grid3X3 = Grid3X3; readonly X = X;
 
   private autoDrawInterval: any;
 
@@ -136,32 +218,41 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['initialCard']) this.initCard();
+    if (changes['initialCard'] && this.initialCard && this.initialCard.length > 0) {
+        this.initCard();
+    }
   }
 
   initCard() {
     if (this.initialCard && this.initialCard.length > 0) {
-      // O DB retorna arrays planos: [B1..B5, I1..I5, N1..N4, G1..G5, O1..O5]
-      // Precisamos mapear isso para as colunas
-      const b = this.initialCard.slice(0, 5);
-      const i = this.initialCard.slice(5, 10);
-      let n = this.initialCard.slice(10, 14);
-      n.splice(2, 0, 0); // Insere o FG (0) no meio da coluna N
-      const g = this.initialCard.slice(14, 19);
-      const o = this.initialCard.slice(19, 24);
-
-      // Transforma Colunas em Linhas para o Grid HTML (5x5)
-      const grid: number[] = [];
-      for (let row = 0; row < 5; row++) {
-        grid.push(b[row], i[row], n[row], g[row], o[row]);
+      const organized = this.organizeCardByRows(this.initialCard);
+      this.cardNumbers.set(organized);
+      
+      // Marca o FG automaticamente se for o início
+      if (this.marked().every(m => !m)) {
+          const newMarks = new Array(25).fill(false);
+          newMarks[12] = true; 
+          this.marked.set(newMarks);
       }
-      this.cardNumbers.set(grid);
-
-      // Marca o FG automaticamente
-      const m = new Array(25).fill(false);
-      m[12] = true;
-      this.marked.set(m);
     }
+  }
+
+  organizeCardByRows(rawCard: number[]): number[] {
+    if (!rawCard || rawCard.length < 24) return [];
+    let processed = [...rawCard];
+    if (processed.length === 24) processed.splice(12, 0, 0);
+
+    const b = processed.slice(0, 5);
+    const i = processed.slice(5, 10);
+    const n = processed.slice(10, 15);
+    const g = processed.slice(15, 20);
+    const o = processed.slice(20, 25);
+
+    const finalGrid: number[] = [];
+    for (let row = 0; row < 5; row++) {
+      finalGrid.push(b[row], i[row], n[row], g[row], o[row]);
+    }
+    return finalGrid;
   }
 
   isMarkedOrDrawn(num: number, index: number): boolean {
@@ -186,7 +277,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
       this.stopAutoDraw();
     } else {
       this.isAutoDrawing.set(true);
-      this.drawNumber();
+      this.drawNumber(); 
       if (this.autoDrawInterval) clearInterval(this.autoDrawInterval);
       this.autoDrawInterval = setInterval(() => {
         if (this.history().length >= 75 || this.winnerName()) {
@@ -223,13 +314,16 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
       .on('broadcast', { event: 'bingo_draw' }, ({ payload }) => {
         this.lastNumber.set(payload.number);
         this.history.update(h => [...h, payload.number]);
-        this.updateNearWinStats(); // Atualiza stats localmente para todos
+        this.updateNearWinStats();
       })
-      .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
+      .on('broadcast', { event: 'stop_drawing' }, () => {
+         this.stopAutoDraw();
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         if (payload.new.winner_id) {
+         const newWinner = payload.new['winner_id'];
+         if (newWinner) {
              this.stopAutoDraw();
-             this.announceWinner(payload.new.winner_id);
+             if (!this.winnerName()) this.announceWinner(newWinner);
          }
       })
       .subscribe();
@@ -241,7 +335,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   closeWinnerModal() { this.winnerName.set(null); }
-  
+
+  async updateNearWinStats() {
+    const { data: count } = await this.supabase.client.rpc('get_near_win_count', { room_code_param: this.roomId });
+    this.nearWins.set(count || 0);
+    if (this.isHost) await this.channel?.send({ type: 'broadcast', event: 'stats_update', payload: { nearWins: count || 0 } });
+  }
+
   async drawNumber() {
     if (!this.isHost || this.winnerName()) return;
     if (this.history().length >= 75) { this.stopAutoDraw(); return; }
@@ -251,15 +351,21 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
     if (attempts >= 200) { this.stopAutoDraw(); return; }
 
-    // Envia o número para o Realtime (Visual rápido)
+    // Envia primeiro o visual (Realtime)
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
     
-    // Atualiza o Banco
     const currentDrawn = [...this.history(), num];
+    
+    // Atualiza DB
     await this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId);
     
-    // Chama o Juiz Automático
-    await this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId });
+    // Confere (Enviando a lista atualizada para garantir a sincronia)
+    await this.supabase.client.rpc('check_any_winner', { 
+        room_code_param: this.roomId,
+        current_drawn_numbers: currentDrawn 
+    });
+    
+    this.updateNearWinStats();
   }
 
   async checkBingo() {
@@ -268,20 +374,19 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     this.stopAutoDraw();
 
     const { data: { user } } = await this.supabase.client.auth.getUser();
-    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { room_code_param: this.roomId, player_id_param: user?.id });
+    
+    // Chama a função blindada
+    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { 
+        room_code_param: this.roomId, 
+        player_id_param: user?.id 
+    });
 
-    if (error) { console.error(error); alert("Erro técnico na conferência."); }
+    if (error) { console.error(error); alert("Erro técnico na conferência. Tente novamente."); }
     else if (!isWinner) { this.showFalseAlarm.set(true); }
+    
     this.verifying.set(false);
   }
 
   resumeAfterFalseAlarm() { this.showFalseAlarm.set(false); }
-  
-  async updateNearWinStats() {
-    // Busca a contagem de "por uma boa" do banco
-    const { data: count } = await this.supabase.client.rpc('get_near_win_count', { room_code_param: this.roomId });
-    this.nearWins.set(count || 0);
-  }
-
   toggleMark(i: number) { this.marked.update(m => { m[i] = !m[i]; return [...m]; }); }
 }

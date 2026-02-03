@@ -6,9 +6,8 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
 import { 
   LucideAngularModule, 
-  Grid3X3, Hash, BrainCircuit, Type, Anchor, CircleDot, 
-  PhoneCall, Hand, // <--- Novos ícones importados aqui
-  Users, Lock, Unlock, X, Search, Trophy 
+  Grid3X3, Hash, BrainCircuit, Type, Anchor, CircleDot, PhoneCall, Hand,
+  Users, Lock, Unlock, X, Search, Trophy, ArrowRight, Play
 } from 'lucide-angular';
 
 @Component({
@@ -18,113 +17,125 @@ import {
   template: `
     <div class="min-h-screen bg-slate-950 p-4 md:p-8 font-sans text-white relative overflow-hidden">
       
-      <header class="flex flex-col md:flex-row justify-between items-center mb-10 relative z-10 gap-4">
-        <div class="text-center md:text-left">
-          <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 tracking-tighter">
+      <header class="flex flex-col md:flex-row justify-between items-center mb-8 relative z-10 gap-6">
+        <div>
+          <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
             GAME HUB
           </h1>
-          <p class="text-slate-400 font-medium">Escolha seu desafio de hoje</p>
+          <p class="text-slate-400 text-sm">Escolha um jogo ou entre com código</p>
         </div>
         
-        <div class="flex items-center gap-4">
-          <div class="hidden md:flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-full border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span class="text-xs font-bold text-emerald-400 tracking-widest">ONLINE</span>
+        <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700 w-full md:w-auto">
+          <div class="bg-slate-800 p-2 rounded-lg text-slate-400">
+            <lucide-icon [img]="Hash" class="w-5 h-5"></lucide-icon>
           </div>
-          <button (click)="logout()" class="text-slate-500 hover:text-red-400 transition-colors text-sm font-bold uppercase tracking-wider">
-            Sair
+          <input [(ngModel)]="globalCode" (keyup.enter)="joinByCode()" type="text" maxlength="4" placeholder="Código da Sala (Ex: 1234)" 
+                 class="bg-transparent border-none focus:outline-none text-white font-bold tracking-widest w-full md:w-48 placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-600 uppercase">
+          <button (click)="joinByCode()" [disabled]="!globalCode || loading()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg font-bold transition-colors disabled:opacity-50">
+            <lucide-icon [img]="ArrowRight" class="w-5 h-5"></lucide-icon>
           </button>
         </div>
       </header>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10 max-w-7xl mx-auto pb-10">
-        
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 max-w-7xl mx-auto">
         @for (game of games; track game.id) {
-          <div (click)="openSetupModal(game)" 
-               class="group relative bg-slate-900/40 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 rounded-3xl p-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/10 overflow-hidden">
+          <div (click)="openGameModal(game)" 
+               class="group relative bg-slate-900/40 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500 rounded-3xl p-6 cursor-pointer transition-all hover:-translate-y-1 shadow-lg">
             
-            @if (game.featured) {
-              <div class="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-transparent text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest">
-                Populares
-              </div>
-            }
-
-            <div class="h-32 rounded-2xl mb-5 flex items-center justify-center transition-colors duration-300"
-                 [ngClass]="'bg-' + game.color + '-900/20 group-hover:bg-' + game.color + '-600/20 text-' + game.color + '-400'">
-              <lucide-icon [img]="game.icon" class="w-14 h-14"></lucide-icon>
+            <div class="h-24 rounded-2xl mb-4 flex items-center justify-center transition-colors"
+                 [ngClass]="'bg-' + game.color + '-900/20 text-' + game.color + '-400'">
+              <lucide-icon [img]="game.icon" class="w-10 h-10"></lucide-icon>
             </div>
 
-            <h3 class="text-xl font-bold text-white mb-1 group-hover:text-indigo-400 transition-colors">{{ game.name }}</h3>
-            <p class="text-slate-500 text-sm leading-relaxed">{{ game.desc }}</p>
-
-            <div class="mt-4 flex items-center gap-2 text-xs font-bold text-slate-600 group-hover:text-white transition-colors uppercase tracking-wider">
-              <span>Jogar Agora</span>
-              <lucide-icon [img]="Trophy" class="w-3 h-3"></lucide-icon>
+            <h3 class="text-lg font-bold text-white mb-1">{{ game.name }}</h3>
+            <div class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-indigo-400">
+              <span>Ver Salas</span>
+              <lucide-icon [img]="ArrowRight" class="w-3 h-3"></lucide-icon>
             </div>
           </div>
         }
-
       </div>
 
       @if (showModal()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-4">
-          <div class="bg-slate-950 border border-slate-800 w-full max-w-md p-6 rounded-3xl shadow-2xl relative overflow-hidden">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 animate-fade-in">
+          <div class="bg-slate-950 border border-slate-800 w-full max-w-4xl h-[80vh] rounded-3xl shadow-2xl relative flex flex-col md:flex-row overflow-hidden">
             
-            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-
-            <button (click)="closeModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
-              <lucide-icon [img]="X" class="w-6 h-6"></lucide-icon>
+            <button (click)="closeModal()" class="absolute top-4 right-4 z-50 text-slate-500 hover:text-white bg-slate-900 rounded-full p-1">
+              <lucide-icon [img]="X" class="w-5 h-5"></lucide-icon>
             </button>
 
-            <h2 class="text-2xl font-black text-white mb-1">CRIAR SALA</h2>
-            <p class="text-indigo-400 text-sm font-bold mb-8 uppercase tracking-widest flex items-center gap-2">
-              <lucide-icon [img]="selectedGame()?.icon" class="w-4 h-4"></lucide-icon>
-              {{ selectedGame()?.name }}
-            </p>
+            <div class="w-full md:w-2/3 p-6 flex flex-col border-b md:border-b-0 md:border-r border-slate-800">
+              <h2 class="text-2xl font-black text-white mb-4 flex items-center gap-2">
+                <lucide-icon [img]="selectedGame()?.icon" class="w-6 h-6 text-indigo-400"></lucide-icon>
+                SALAS DE {{ selectedGame()?.name | uppercase }}
+              </h2>
 
-            <div class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <button (click)="isPrivate.set(false)" 
-                  [class.bg-indigo-600]="!isPrivate()" [class.text-white]="!isPrivate()" [class.border-transparent]="!isPrivate()"
-                  class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 flex flex-col items-center gap-2 transition-all hover:bg-slate-800">
-                  <lucide-icon [img]="Unlock" class="w-6 h-6"></lucide-icon>
-                  <span class="text-xs font-bold uppercase">Pública</span>
-                </button>
+              <div class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                @if (loadingRooms()) {
+                  <div class="text-center py-10 text-slate-500 animate-pulse">Buscando salas...</div>
+                } @else if (publicRooms().length === 0) {
+                  <div class="text-center py-10 text-slate-600 border border-dashed border-slate-800 rounded-xl">
+                    <p>Nenhuma sala pública encontrada.</p>
+                    <p class="text-sm">Crie uma agora!</p>
+                  </div>
+                } @else {
+                  @for (room of publicRooms(); track room.id) {
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex justify-between items-center hover:border-indigo-500 transition-colors group">
+                      <div>
+                        <h4 class="font-bold text-white">{{ room.name }}</h4>
+                        <span class="text-xs text-slate-500 uppercase tracking-wide">Aguardando...</span>
+                      </div>
+                      <button (click)="joinRoom(room.id)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase flex items-center gap-2">
+                        Entrar <lucide-icon [img]="Play" class="w-3 h-3"></lucide-icon>
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
 
-                <button (click)="isPrivate.set(true)"
-                  [class.bg-indigo-600]="isPrivate()" [class.text-white]="isPrivate()" [class.border-transparent]="isPrivate()"
-                  class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 flex flex-col items-center gap-2 transition-all hover:bg-slate-800">
-                  <lucide-icon [img]="Lock" class="w-6 h-6"></lucide-icon>
-                  <span class="text-xs font-bold uppercase">Privada</span>
+            <div class="w-full md:w-1/3 p-6 bg-slate-900/30 flex flex-col justify-center relative">
+              <div class="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-900/10 pointer-events-none"></div>
+              
+              <h3 class="text-xl font-bold text-white mb-6">Criar Nova Sala</h3>
+
+              <div class="space-y-4 relative z-10">
+                <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button (click)="isPrivate.set(false)" 
+                     [class.bg-slate-800]="!isPrivate()" [class.text-white]="!isPrivate()"
+                     class="flex-1 py-2 text-xs font-bold uppercase rounded-lg text-slate-500 transition-all">Pública</button>
+                  <button (click)="isPrivate.set(true)" 
+                     [class.bg-indigo-600]="isPrivate()" [class.text-white]="isPrivate()"
+                     class="flex-1 py-2 text-xs font-bold uppercase rounded-lg text-slate-500 transition-all">Privada</button>
+                </div>
+
+                <div class="text-xs text-slate-400 text-center min-h-[40px]">
+                  @if (isPrivate()) {
+                    <p>Você receberá um <strong class="text-white">código de 4 dígitos</strong> para convidar seus amigos.</p>
+                  } @else {
+                    <p>Sua sala aparecerá na lista para <strong class="text-white">qualquer pessoa</strong> entrar.</p>
+                  }
+                </div>
+
+                <button (click)="createRoom()" [disabled]="loading()" 
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+                  @if (loading()) { <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> }
+                  {{ loading() ? 'CRIANDO...' : 'CRIAR SALA' }}
                 </button>
               </div>
-
-              @if (isPrivate()) {
-                <div class="animate-slide-down pt-2">
-                  <label class="text-[10px] font-bold text-slate-500 mb-2 block uppercase tracking-widest">Senha de Acesso</label>
-                  <input [(ngModel)]="roomPassword" type="text" placeholder="Crie uma senha..." 
-                         class="w-full bg-slate-900 border border-slate-700 text-white px-4 py-4 rounded-xl focus:border-indigo-500 focus:outline-none font-medium text-center placeholder:text-slate-600">
-                </div>
-              }
-
-              <button (click)="createRoom()" [disabled]="loading()" 
-                      class="w-full bg-white hover:bg-slate-200 text-slate-950 py-4 rounded-xl font-black uppercase shadow-lg shadow-white/5 mt-4 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-3">
-                @if (loading()) {
-                  <div class="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin"></div>
-                }
-                {{ loading() ? 'CRIANDO...' : 'INICIAR PARTIDA' }}
-              </button>
             </div>
+
           </div>
         </div>
       }
     </div>
   `,
   styles: [`
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-    .animate-slide-down { animation: slideDown 0.2s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
   `]
 })
 export class LobbyComponent {
@@ -132,108 +143,112 @@ export class LobbyComponent {
   auth = inject(AuthService);
   router = inject(Router);
 
-  // Ícones Disponíveis
-  readonly X = X; readonly Unlock = Unlock; readonly Lock = Lock; readonly Trophy = Trophy;
+  // Icons
+  readonly Hash = Hash; readonly ArrowRight = ArrowRight; readonly X = X; readonly Play = Play;
 
-  // --- LISTA COMPLETA DE JOGOS ---
+  // Games List
   games = [
-    { 
-      id: 'bingo', 
-      name: 'Bingo Online', 
-      desc: 'Marque a cartela e grite BINGO!', 
-      icon: Grid3X3, 
-      color: 'indigo', 
-      featured: true 
-    },
-    { 
-      id: 'chamada', 
-      name: 'Chamada', 
-      desc: 'Quando o telefone tocar, atenda!', 
-      icon: PhoneCall, 
-      color: 'cyan', 
-      featured: true 
-    },
-    { 
-      id: 'stop', 
-      name: 'Stop', 
-      desc: 'Quem sabe mais palavras?', 
-      icon: Hand, 
-      color: 'rose', 
-      featured: true 
-    },
-    { 
-      id: 'tictactoe', 
-      name: 'Jogo da Velha', 
-      desc: 'Clássico duelo de X e O.', 
-      icon: Hash, 
-      color: 'emerald', 
-      featured: false 
-    },
-    { 
-      id: 'memory', 
-      name: 'Jogo da Memória', 
-      desc: 'Encontre os pares rapidamente.', 
-      icon: BrainCircuit, 
-      color: 'purple', 
-      featured: false 
-    },
-    { 
-      id: 'hangman', 
-      name: 'Forca', 
-      desc: 'Adivinhe a palavra antes do fim.', 
-      icon: Type, 
-      color: 'orange', 
-      featured: false 
-    },
-    { 
-      id: 'battleship', 
-      name: 'Batalha Naval', 
-      desc: 'Afunde os navios inimigos.', 
-      icon: Anchor, 
-      color: 'blue', 
-      featured: false 
-    },
-    { 
-      id: 'checkers', 
-      name: 'Damas', 
-      desc: 'Estratégia pura no tabuleiro.', 
-      icon: CircleDot, 
-      color: 'red', 
-      featured: false 
-    }
+    { id: 'bingo', name: 'Bingo Online', icon: Grid3X3, color: 'indigo' },
+    { id: 'chamada', name: 'Chamada', icon: PhoneCall, color: 'cyan' },
+    { id: 'stop', name: 'Stop (Adedonha)', icon: Hand, color: 'rose' },
+    { id: 'tictactoe', name: 'Jogo da Velha', icon: Hash, color: 'emerald' },
+    { id: 'memory', name: 'Jogo da Memória', icon: BrainCircuit, color: 'purple' },
+    { id: 'battleship', name: 'Batalha Naval', icon: Anchor, color: 'blue' }
   ];
 
-  // Estados
+  // States
   showModal = signal(false);
-  loading = signal(false);
   selectedGame = signal<any>(null);
+  publicRooms = signal<any[]>([]);
+  
+  loading = signal(false);
+  loadingRooms = signal(false);
+  
+  // Inputs
   isPrivate = signal(false);
-  roomPassword = '';
+  globalCode = '';
 
-  openSetupModal(game: any) {
+  async openGameModal(game: any) {
     this.selectedGame.set(game);
-    this.isPrivate.set(false);
-    this.roomPassword = '';
+    this.isPrivate.set(false); // Reset para pública
     this.showModal.set(true);
+    this.fetchPublicRooms(game.id);
   }
 
   closeModal() {
     this.showModal.set(false);
   }
 
+  // BUSCAR SALAS PÚBLICAS
+  async fetchPublicRooms(gameId: string) {
+    this.loadingRooms.set(true);
+    try {
+      const { data, error } = await this.supabase.client
+        .from('rooms')
+        .select('*')
+        .eq('game_type', gameId)
+        .eq('is_public', true)
+        .eq('status', 'waiting') // Só salas aguardando
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      this.publicRooms.set(data || []);
+    } catch (err) {
+      console.error('Erro ao buscar salas:', err);
+    } finally {
+      this.loadingRooms.set(false);
+    }
+  }
+
+  // ENTRAR EM SALA EXISTENTE
+  joinRoom(roomId: string) {
+    this.router.navigate(['/room', roomId]);
+  }
+
+  // ENTRAR VIA CÓDIGO (Topo da tela)
+  async joinByCode() {
+    if (!this.globalCode || this.globalCode.length < 4) return;
+    this.loading.set(true);
+    try {
+      // Procura sala pelo código
+      const { data, error } = await this.supabase.client
+        .from('rooms')
+        .select('id')
+        .eq('code', this.globalCode.toUpperCase())
+        .single();
+
+      if (error || !data) {
+        alert('Sala não encontrada com este código!');
+      } else {
+        this.router.navigate(['/room', data.id]);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao buscar sala.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // CRIAR SALA (Com código se for privada)
   async createRoom() {
     this.loading.set(true);
     try {
       const user = await this.auth.getUser();
-      const currentGame = this.selectedGame();
+      const game = this.selectedGame();
+      
+      // Gera código de 4 dígitos (Ex: 4A2B ou 1234)
+      const roomCode = this.isPrivate() 
+        ? Math.floor(1000 + Math.random() * 9000).toString() // Gera ex: "4521"
+        : null;
 
       const { data, error } = await this.supabase.client
         .from('rooms')
         .insert({
-          name: `${currentGame.name} de ${user?.user_metadata?.['username'] || 'Convidado'}`,
-          game_type: currentGame.id,
+          name: `${game.name} de ${user?.user_metadata?.['username'] || 'Convidado'}`,
+          game_type: game.id,
           is_public: !this.isPrivate(),
-          password: this.isPrivate() ? this.roomPassword : null,
+          code: roomCode, // Salva o código
           host_id: user?.id,
           status: 'waiting'
         })
@@ -241,17 +256,17 @@ export class LobbyComponent {
         .single();
 
       if (error) throw error;
+      
+      // Se tiver código, mostra num alert rápido (opcional, pois vai estar na sala)
+      if (roomCode) alert(`Sala Criada! Código: ${roomCode}`);
+      
       this.router.navigate(['/room', data.id]);
 
     } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao criar sala.');
+      console.error('Erro ao criar:', error);
+      alert('Erro ao criar sala. Tente novamente.');
     } finally {
       this.loading.set(false);
     }
-  }
-
-  async logout() {
-    await this.auth.signOut();
   }
 }

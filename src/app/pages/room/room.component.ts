@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings, Eye } from 'lucide-angular';
+import { AuthService } from '../../core/services/auth.service'; // Importar Auth
+import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings, Eye, LogOut } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { BingoComponent } from '../../components/bingo.component';
 import { ChatComponent } from '../../components/chat.component';
@@ -14,20 +15,31 @@ import { ChatComponent } from '../../components/chat.component';
   imports: [CommonModule, FormsModule, LucideAngularModule, BingoComponent, ChatComponent],
   template: `
     <div class="min-h-screen bg-slate-950 text-white flex flex-col font-sans">
+      
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Voltar ao Lobby">
             <lucide-icon [img]="Home" class="w-5 h-5"></lucide-icon>
           </button>
+          
           <div class="h-8 w-[1px] bg-slate-700"></div>
+          
           <div class="flex flex-col">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">CÓDIGO</p>
             <h1 class="text-xl font-mono font-bold text-indigo-400 tracking-wider leading-none">{{ roomId }}</h1>
           </div>
         </div>
-        <div class="flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
-          <lucide-icon [img]="Users" class="w-4 h-4 text-indigo-400"></lucide-icon>
-          <span class="text-sm font-bold">{{ players().length }}</span>
+
+        <div class="flex items-center gap-4">
+          <div class="hidden sm:flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
+            <lucide-icon [img]="Users" class="w-4 h-4 text-indigo-400"></lucide-icon>
+            <span class="text-sm font-bold">{{ players().length }}</span>
+          </div>
+
+          <button (click)="logout()" class="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg transition-all text-xs font-bold uppercase border border-red-500/20">
+            <lucide-icon [img]="LogOut" class="w-4 h-4"></lucide-icon>
+            Sair
+          </button>
         </div>
       </header>
 
@@ -35,7 +47,7 @@ import { ChatComponent } from '../../components/chat.component';
         @if (loading()) {
           <div class="flex flex-col items-center gap-4 mt-20 animate-pulse">
             <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-slate-400 font-bold">Conectando...</p>
+            <p class="text-slate-400 font-bold">Conectando à sala...</p>
           </div>
         } 
         @else {
@@ -123,7 +135,7 @@ import { ChatComponent } from '../../components/chat.component';
                       <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2 animate-fade-in transition-all hover:border-indigo-500">
                         <span class="w-2 h-2 rounded-full" [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500' : 'bg-green-500'"></span>
                         <span class="font-bold text-sm text-slate-200">
-                          {{ p.username }} 
+                          {{ p.username || 'Convidado' }} 
                           @if(p.id === currentUser()?.id) { (Você) }
                           @if(p.id === roomData()?.host_id) { 👑 }
                         </span>
@@ -155,6 +167,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   route = inject(ActivatedRoute);
   router = inject(Router);
   supabase = inject(SupabaseService);
+  authService = inject(AuthService);
   
   readonly Home = Home;
   readonly Users = Users;
@@ -163,6 +176,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   readonly Check = Check;
   readonly Settings = Settings;
   readonly Eye = Eye;
+  readonly LogOut = LogOut;
 
   roomId = '';
   loading = signal(true);
@@ -186,6 +200,11 @@ export class RoomComponent implements OnInit, OnDestroy {
     if (this.channel) this.supabase.client.removeChannel(this.channel);
   }
 
+  async logout() {
+    await this.authService.signOut();
+    this.router.navigate(['/auth']);
+  }
+
   async connectToRoom() {
     try {
       const { data: { user } } = await this.supabase.client.auth.getUser();
@@ -197,7 +216,11 @@ export class RoomComponent implements OnInit, OnDestroy {
       this.roomData.set(room);
       if (room.winning_modes) this.selectedModes.set(room.winning_modes);
 
+      // --- LOGICA REFORÇADA DE ENTRADA E CARTELA ---
       if (user) {
+        const username = user.user_metadata['username'] || 'Convidado';
+
+        // 1. Tenta pegar seus dados na sala
         const { data: existingPlayer } = await this.supabase.client
           .from('room_players')
           .select('*')
@@ -207,7 +230,10 @@ export class RoomComponent implements OnInit, OnDestroy {
 
         let myCard = existingPlayer?.card;
 
+        // 2. Se não tem dados ou a cartela está vazia
         if (!existingPlayer || !myCard || myCard.length === 0) {
+          
+          // Gera Cartela no Banco
           const { data: uniqueCard, error: rpcError } = await this.supabase.client
             .rpc('generate_unique_card', { room_code_param: this.roomId });
 
@@ -215,14 +241,28 @@ export class RoomComponent implements OnInit, OnDestroy {
           myCard = uniqueCard;
 
           if (existingPlayer) {
-             await this.supabase.client.from('room_players').update({ card: myCard }).eq('room_code', this.roomId).eq('user_id', user.id);
+             // Atualiza (incluindo o NOME)
+             await this.supabase.client
+               .from('room_players')
+               .update({ card: myCard, username: username })
+               .eq('room_code', this.roomId)
+               .eq('user_id', user.id);
           } else {
-             await this.supabase.client.from('room_players').insert({ room_code: this.roomId, user_id: user.id, card: myCard });
+             // Insere novo (incluindo o NOME)
+             await this.supabase.client
+               .from('room_players')
+               .insert({ 
+                 room_code: this.roomId, 
+                 user_id: user.id, 
+                 card: myCard,
+                 username: username 
+               });
           }
         }
         
         if (myCard) this.userCard.set(myCard);
       }
+      // --------------------------------------------------------
 
       this.fetchPlayers();
       this.setupRealtime();
@@ -235,8 +275,13 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   async fetchPlayers() {
-    const { data } = await this.supabase.client.from('room_players').select('*, profiles(username)').eq('room_code', this.roomId);
-    if (data) this.players.set(data.map((p: any) => ({ id: p.user_id, username: p.profiles?.username || 'Convidado' })));
+    // Busca simples, sem JOIN complexo que pode falhar
+    const { data } = await this.supabase.client
+      .from('room_players')
+      .select('*')
+      .eq('room_code', this.roomId);
+      
+    if (data) this.players.set(data);
   }
 
   setupRealtime() {
@@ -259,7 +304,6 @@ export class RoomComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Helper para visualizar cartela no Lobby (insere o 0 visualmente)
   getPreviewCard() {
     const c = [...this.userCard()];
     if (c.length === 24) c.splice(12, 0, 0);

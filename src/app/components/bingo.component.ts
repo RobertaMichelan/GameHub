@@ -2,7 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2, RefreshCw, Power } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, RefreshCw, Power } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
@@ -137,8 +137,12 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 <button (click)="toggleMark($index)" 
                 class="aspect-square flex items-center justify-center font-bold text-lg sm:text-xl rounded-lg transition-all relative border-2 select-none"
                 [ngClass]="getButtonClass(num, $index)">
-                    @if (num === 0) { <lucide-icon [img]="Gamepad2" class="w-6 h-6 sm:w-8 sm:h-8 text-indigo-500 opacity-80"></lucide-icon> } 
+                    
+                    @if (num === 0) { 
+                        <img src="assets/logo-bingo.png" alt="Free" class="w-8 h-8 object-contain opacity-90 drop-shadow-md">
+                    } 
                     @else { {{ num }} }
+                    
                     @if (num !== 0 && isMarkedOrDrawn(num, $index)) { <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-30 text-4xl font-black pointer-events-none">X</span> }
                 </button>
             }
@@ -187,7 +191,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
-  readonly Grid3X3 = Grid3X3; readonly X = X; readonly Gamepad2 = Gamepad2;
+  readonly Grid3X3 = Grid3X3; readonly X = X; 
   readonly RefreshCw = RefreshCw; readonly Power = Power;
 
   private autoDrawInterval: any;
@@ -287,7 +291,10 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
           this.winnerName.set(payload.winnerName);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         if (payload.new.status === 'WAITING' && this.history().length > 0) window.location.reload();
+         // Se a sala mudou para WAITING (Reiniciou), recarrega
+         if (payload.new.status === 'WAITING' && this.history().length > 0) {
+            window.location.reload();
+         }
       })
       .subscribe();
   }
@@ -314,18 +321,16 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
     if (attempts >= 200) { this.stopAutoDraw(); return; }
 
-    // 1. ATUALIZA VISUAL LOCAL IMEDIATAMENTE (Otimização para não travar)
+    // Atualiza Visual Imediato
     this.lastNumber.set(num);
     this.history.update(h => [...h, num]);
 
-    // 2. ENVIA REALTIME
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
     
-    // 3. SALVA DB (ASSÍNCRONO)
+    // Atualiza DB
     const currentDrawn = [...this.history()];
     this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId).then(() => {
-        // Só confere DEPOIS que salvou
-        this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId });
+        this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId, current_drawn_numbers: currentDrawn });
     });
     
     this.updateNearWinStats();
@@ -345,15 +350,15 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
 
     if (error) { 
         console.error(error); 
-        alert("Erro técnico na conferência."); 
+        alert("Erro técnico na conferência. Tente novamente."); 
     } 
     else if (winnerName) { 
-        // BINGO: Manda sinal para TODOS
+        // VITÓRIA
         await this.channel?.send({ type: 'broadcast', event: 'game_win', payload: { winnerName: winnerName } });
         this.winnerName.set(winnerName); 
     }
     else { 
-        // BRONHA: Manda sinal para TODOS
+        // BRONHA
         const username = user?.user_metadata['username'] || 'Alguém';
         await this.channel?.send({ type: 'broadcast', event: 'false_alarm', payload: { username: username } });
         this.falseAlarmUser.set(username);
@@ -365,7 +370,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   resumeAfterFalseAlarm() { this.falseAlarmUser.set(null); }
   
   async restartGame() {
-    if(!confirm('Tem certeza? Isso vai zerar as cartelas.')) return;
+    if(!confirm('Tem certeza? Isso vai zerar as cartelas de todos para um novo jogo.')) return;
     await this.supabase.client.rpc('restart_game', { room_code_param: this.roomId });
   }
 

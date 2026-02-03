@@ -58,7 +58,7 @@ import { LucideAngularModule, LogIn, UserPlus, Ghost, X } from 'lucide-angular';
 
             <button type="submit" [disabled]="loading()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
               @if (loading()) {
-                <span>Carregando...</span>
+                <span>Verificando...</span>
               } @else {
                 <lucide-icon [img]="isLogin() ? LogIn : UserPlus" class="w-5 h-5"></lucide-icon>
                 {{ isLogin() ? 'ACESSAR CONTA' : 'CRIAR CONTA' }}
@@ -88,14 +88,14 @@ import { LucideAngularModule, LogIn, UserPlus, Ghost, X } from 'lucide-angular';
                 <lucide-icon [img]="Ghost" class="w-8 h-8 text-indigo-400"></lucide-icon>
               </div>
               <h3 class="text-xl font-bold text-white">Identificação</h3>
-              <p class="text-sm text-slate-400">Como você quer ser chamado?</p>
+              <p class="text-sm text-slate-400">Escolha um nome único para jogar</p>
             </div>
 
             <form (submit)="guestLogin()" class="space-y-4">
                <input [(ngModel)]="guestNameInput" name="guestName" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white text-center text-lg font-bold outline-none focus:border-indigo-500 transition-colors placeholder-slate-600" placeholder="Digite seu apelido..." autoFocus>
                
                <button type="submit" [disabled]="!guestNameInput.trim() || loading()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                 ENTRAR NA SALA
+                 {{ loading() ? 'VERIFICANDO...' : 'ENTRAR NA SALA' }}
                </button>
             </form>
           </div>
@@ -110,19 +110,15 @@ export class AuthComponent {
   router = inject(Router);
 
   isLogin = signal(true);
-  showGuestInput = signal(false); // Controla a tela do convidado
+  showGuestInput = signal(false);
   loading = signal(false);
   
   email = '';
   password = '';
   username = '';
-  
   guestNameInput = '';
 
-  readonly LogIn = LogIn;
-  readonly UserPlus = UserPlus;
-  readonly Ghost = Ghost;
-  readonly X = X;
+  readonly LogIn = LogIn; readonly UserPlus = UserPlus; readonly Ghost = Ghost; readonly X = X;
 
   async handleSubmit() {
     this.loading.set(true);
@@ -144,7 +140,6 @@ export class AuthComponent {
 
   async guestLogin() {
     if (!this.guestNameInput.trim()) return;
-
     this.loading.set(true);
     try {
       const rand = Math.floor(Math.random() * 1000000);
@@ -152,19 +147,20 @@ export class AuthComponent {
       const guestPass = `guestpass${rand}`; 
       const name = this.guestNameInput.trim();
 
+      // O signUp do AuthService agora verifica se o nome existe antes de criar
       const { data, error } = await this.authService.signUp(guestEmail, guestPass, name);
       
       if (error) throw error;
 
-      if (!data.session) {
+      if (!data?.session) {
          await this.authService.signIn(guestEmail, guestPass);
       }
       
       this.router.navigate(['/lobby']);
       
     } catch (error: any) {
-      console.error(error);
-      alert('Erro ao entrar: ' + error.message);
+      // Se der erro de nome duplicado, mostramos aqui
+      alert('❌ ' + error.message);
     } finally {
       this.loading.set(false);
     }

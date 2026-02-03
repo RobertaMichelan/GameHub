@@ -26,11 +26,20 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
            <div class="text-center animate-bounce-in relative px-4 w-full max-w-lg">
               <div class="absolute -top-20 -left-20 w-40 h-40 bg-yellow-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
               <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
-              <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-2xl tracking-widest mb-4">BINGO!</h1>
+
+              <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-2xl tracking-widest mb-4">
+                BINGO!
+              </h1>
               <p class="text-xl text-slate-300 font-bold uppercase tracking-widest mb-2">Conferência Automática Detectou:</p>
               <p class="text-2xl text-white font-bold uppercase tracking-widest mb-6">Vencedor</p>
-              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-[0_0_50px_rgba(79,70,229,0.5)] border-4 border-indigo-400 transform -rotate-2 scale-110 mb-8 break-words">{{ winnerName() }}</div>
-              <button (click)="closeWinnerModal()" class="mt-8 bg-slate-800 hover:bg-slate-700 text-white py-3 px-8 rounded-xl font-bold transition-colors border border-slate-600 uppercase tracking-widest">Fechar</button>
+              
+              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-[0_0_50px_rgba(79,70,229,0.5)] border-4 border-indigo-400 transform -rotate-2 scale-110 mb-8 break-words">
+                {{ winnerName() }}
+              </div>
+              
+              <button (click)="closeWinnerModal()" class="mt-8 bg-slate-800 hover:bg-slate-700 text-white py-3 px-8 rounded-xl font-bold transition-colors border border-slate-600 uppercase tracking-widest">
+                Fechar
+              </button>
            </div>
         </div>
       }
@@ -42,31 +51,40 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
               <h1 class="text-4xl md:text-5xl font-black text-red-500 tracking-tighter mb-2 uppercase leading-none">COMEU<br>BRONHA!</h1>
               <div class="w-full h-1 bg-slate-700 my-4"></div>
               <p class="text-xl text-slate-300 font-bold mb-6">Faltam números.<br><span class="text-yellow-400">Continuem jogando!</span></p>
-              <button (click)="showFalseAlarm.set(false)" class="w-full bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 uppercase">VOLTAR</button>
+              <button (click)="resumeAfterFalseAlarm()" class="w-full bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 uppercase">
+                VOLTAR AO JOGO
+              </button>
            </div>
         </div>
       }
 
       <div class="mb-6 text-center w-full">
         <h2 class="text-4xl font-black text-yellow-400 drop-shadow-lg tracking-wider mb-2">BINGO</h2>
+        
         <div class="flex justify-center gap-2 mb-4 flex-wrap">
           @for (mode of winningModes; track $index) {
-            <span class="bg-indigo-900 text-indigo-200 text-[10px] px-2 py-1 rounded border border-indigo-700 font-bold uppercase">{{ translateMode(mode) }}</span>
+            <span class="bg-indigo-900 text-indigo-200 text-[10px] px-2 py-1 rounded border border-indigo-700 font-bold uppercase">
+              {{ translateMode(mode) }}
+            </span>
           }
         </div>
         
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full relative overflow-hidden shadow-2xl">
            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse"></div>
+           
            <p class="text-slate-400 text-xs font-bold uppercase mb-2">BOLA DA VEZ</p>
            <div class="flex justify-center items-center gap-4">
              <div class="w-24 h-24 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-full flex items-center justify-center border-4 border-slate-800 shadow-2xl transform transition-all" [ngClass]="{'scale-110': isAutoDrawing()}">
                 <span class="text-5xl font-black text-white">{{ lastNumber() || '?' }}</span>
              </div>
+
              <div class="hidden sm:flex flex-col gap-1 ml-4 opacity-50">
                 <span class="text-[10px] uppercase font-bold text-slate-500">Anteriores</span>
                 <div class="flex gap-2">
                   @for (hist of history().slice(-4).reverse(); track $index) {
-                    <div class="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 text-xs font-bold text-slate-300">{{ hist }}</div>
+                    <div class="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 text-xs font-bold text-slate-300">
+                      {{ hist }}
+                    </div>
                   }
                 </div>
              </div>
@@ -74,22 +92,33 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
 
            @if (isHost && !winnerName()) {
              <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3">
-               <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+               
+               <button (click)="drawNumber()" [disabled]="isAutoDrawing()"
+                 class="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                  <span>SORTEAR MANUAL</span>
                  <span class="bg-slate-900 text-xs py-0.5 px-2 rounded-full">{{ history().length }}/75</span>
                </button>
+
                @if (!isAutoDrawing()) {
                  <div class="flex justify-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
                    <p class="text-[10px] text-slate-400 uppercase font-bold flex items-center mr-2">Velocidade:</p>
                    @for (s of [2, 3, 4]; track s) {
-                     <button (click)="drawSpeed.set(s * 1000)" class="px-3 py-1 text-xs font-bold rounded transition-colors" [ngClass]="drawSpeed() === s * 1000 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'">{{ s }}s</button>
+                     <button (click)="drawSpeed.set(s * 1000)" 
+                       class="px-3 py-1 text-xs font-bold rounded transition-colors"
+                       [ngClass]="drawSpeed() === s * 1000 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'">
+                       {{ s }}s
+                     </button>
                    }
                  </div>
                }
-               <button (click)="toggleAutoDraw()" [ngClass]="isAutoDrawing() ? 'bg-red-600 hover:bg-red-500 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-500'" class="w-full text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+
+               <button (click)="toggleAutoDraw()" 
+                 [ngClass]="isAutoDrawing() ? 'bg-red-600 hover:bg-red-500 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-500'"
+                 class="w-full text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                  <lucide-icon [img]="isAutoDrawing() ? Pause : Play" class="w-5 h-5"></lucide-icon>
                  <span>{{ isAutoDrawing() ? 'PARAR AUTOMÁTICO' : 'INICIAR AUTOMÁTICO' }}</span>
                </button>
+
              </div>
            }
         </div>
@@ -118,7 +147,9 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
                 @if (num === 0) { <span class="text-xs font-black opacity-80 tracking-tighter">FG</span> } 
                 @else { {{ num }} }
                 
-                @if (marked()[$index]) { <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-30 text-4xl font-black pointer-events-none">X</span> }
+                @if (isMarkedOrDrawn(num, $index)) {
+                   <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-30 text-4xl font-black pointer-events-none">X</span>
+                }
                 </button>
             }
           } @else {
@@ -130,7 +161,8 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
 
         @if (!winnerName()) {
             <div class="mt-6">
-              <button (click)="checkBingo()" [disabled]="verifying()" class="w-full bg-gradient-to-b from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 disabled:from-slate-400 disabled:to-slate-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all text-xl tracking-widest flex items-center justify-center gap-2">
+              <button (click)="checkBingo()" [disabled]="verifying()"
+                class="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all text-xl tracking-widest flex items-center justify-center gap-2">
                 <lucide-icon [img]="Trophy" class="w-6 h-6"></lucide-icon>
                 {{ verifying() ? 'CONFERINDO...' : 'BINGO!' }}
               </button>
@@ -144,7 +176,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap } from 'luc
 export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   @Input() isHost = false;
   @Input() roomId = '';
-  @Input() winningModes: string[] = [];
+  @Input() winningModes: string[] = []; // Isso corrige o erro do 'winningModes'
   @Input() initialCard: number[] = []; 
   
   supabase = inject(SupabaseService);
@@ -158,6 +190,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   verifying = signal(false);
   winnerName = signal<string | null>(null);
   showFalseAlarm = signal(false);
+  
   isAutoDrawing = signal(false);
   drawSpeed = signal(4000); 
   nearWins = signal(0); 
@@ -177,6 +210,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     this.recoverGameState();
   }
 
+  // Monitora mudanças para redesenhar a cartela se ela chegar depois
   ngOnChanges(changes: SimpleChanges) {
     if (changes['initialCard'] && this.initialCard && this.initialCard.length > 0) {
         this.initCard();
@@ -187,9 +221,10 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     if (this.initialCard && this.initialCard.length > 0) {
       const organized = this.organizeCardByRows(this.initialCard);
       this.cardNumbers.set(organized);
+      
       if (this.marked().every(m => !m)) {
           const newMarks = new Array(25).fill(false);
-          newMarks[12] = true; 
+          newMarks[12] = true; // FG
           this.marked.set(newMarks);
       }
     }
@@ -205,6 +240,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     const n = processed.slice(10, 15);
     const g = processed.slice(15, 20);
     const o = processed.slice(20, 25);
+
     const finalGrid: number[] = [];
     for (let row = 0; row < 5; row++) {
       finalGrid.push(b[row], i[row], n[row], g[row], o[row]);
@@ -212,23 +248,22 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     return finalGrid;
   }
 
-  // --- NOVA FUNÇÃO DE ESTILO ---
-  getButtonClass(num: number, index: number): string {
-    const isMarked = this.marked()[index];
-    const isDrawn = num !== 0 && this.history().includes(num);
-
-    if (isMarked) {
-        // Se marcado, fica vermelho (padrão)
-        return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
-    } else if (isDrawn) {
-        // Se sorteado mas NÃO marcado -> AMARELO/DOURADO (Aviso!)
-        return 'bg-amber-300 text-amber-900 border-amber-400 animate-pulse shadow-md';
-    } else {
-        // Normal
-        return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
-    }
+  // --- LÓGICA VISUAL UNIFICADA ---
+  isMarkedOrDrawn(num: number, index: number): boolean {
+    if (num === 0) return true; // FG sempre marcado
+    // Marcado se o usuário clicou OU se o sistema já sorteou a bola
+    return this.marked()[index] || this.history().includes(num);
   }
 
+  getButtonClass(num: number, index: number): string {
+    if (this.isMarkedOrDrawn(num, index)) {
+        // Cor Única (Vermelho) para todos
+        return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
+    }
+    return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
+  }
+
+  // Garante que o ngOnDestroy existe (Correção do erro 1)
   ngOnDestroy() {
     this.stopAutoDraw();
     if (this.channel) this.supabase.client.removeChannel(this.channel);
@@ -275,6 +310,10 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     this.channel
       .on('broadcast', { event: 'bingo_draw' }, ({ payload }) => this.updateGameRequest(payload.number))
       .on('broadcast', { event: 'stats_update' }, ({ payload }) => { if (payload.nearWins !== undefined) this.nearWins.set(payload.nearWins); })
+      .on('broadcast', { event: 'stop_drawing' }, () => {
+         // Comando remoto para parar o sorteio (quando alguém grita Bingo)
+         this.stopAutoDraw();
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
          const newWinner = payload.new['winner_id'];
          if (newWinner) {
@@ -305,29 +344,56 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async drawNumber() {
-    if (!this.isHost) return;
+    if (!this.isHost || this.winnerName()) return;
+    
+    // Se acabou as pedras ou muitas tentativas falhas, para.
     if (this.history().length >= 75) { this.stopAutoDraw(); return; }
 
     let num;
     let attempts = 0;
     do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
+
     if (attempts >= 200) { this.stopAutoDraw(); return; }
 
     this.updateGameRequest(num);
+    
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
-    const currentDrawn = this.history();
+    const currentDrawn = [...this.history()];
     await this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId);
+    
+    // Confere automaticamente se alguém ganhou
     await this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId });
     this.updateNearWinStats();
   }
 
+  // --- BINGO MANUAL (CHECK) ---
   async checkBingo() {
     this.verifying.set(true);
-    const { data: user } = await this.supabase.client.auth.getUser();
-    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { room_code_param: this.roomId, player_id_param: user.user?.id });
-    if (error) { console.error(error); alert("Erro técnico."); } 
-    else if (!isWinner) { this.showFalseAlarm.set(true); }
+    
+    // 1. Manda parar o sorteio imediatamente
+    await this.channel?.send({ type: 'broadcast', event: 'stop_drawing', payload: {} });
+    this.stopAutoDraw();
+
+    const { data: { user } } = await this.supabase.client.auth.getUser();
+    
+    // 2. Confere no banco
+    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { 
+        room_code_param: this.roomId, 
+        player_id_param: user?.id 
+    });
+
+    if (error) { 
+        console.error(error); 
+        alert("Erro técnico. (Verifique RLS/Permissões)"); 
+    } else if (!isWinner) { 
+        this.showFalseAlarm.set(true); 
+    }
+    
     this.verifying.set(false);
+  }
+
+  resumeAfterFalseAlarm() {
+      this.showFalseAlarm.set(false);
   }
 
   toggleMark(index: number) {

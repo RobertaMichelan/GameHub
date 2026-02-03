@@ -9,12 +9,11 @@ export class AuthService {
   private supabase = inject(SupabaseService);
   private router = inject(Router);
 
-  // Login com Email/Senha
+  // --- MÉTODOS DE EMAIL E SENHA (Necessários para não quebrar o código antigo) ---
   async signIn(email: string, password: string) {
     return await this.supabase.client.auth.signInWithPassword({ email, password });
   }
 
-  // Cadastro com Email/Senha
   async signUp(email: string, password: string, username: string) {
     return await this.supabase.client.auth.signUp({
       email,
@@ -23,38 +22,30 @@ export class AuthService {
     });
   }
 
-  // Login com Google
+  // --- MÉTODOS NOVOS (Google e Convidado) ---
   async signInWithGoogle() {
     const { error } = await this.supabase.client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/lobby`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     });
     if (error) throw error;
   }
 
-  // Login Anônimo (AGORA COM NOME)
   async signInAnonymously(username: string) {
     const { error } = await this.supabase.client.auth.signInAnonymously({
-      options: {
-        data: { username: username } // Salva o nome nos metadados
-      }
+      options: { data: { username: username } }
     });
     if (error) throw error;
   }
 
-  // Sair
   async signOut() {
     await this.supabase.client.auth.signOut();
     this.router.navigate(['/']);
   }
 
-  // Pegar usuário
   async getUser() {
     const { data } = await this.supabase.client.auth.getUser();
     return data.user;

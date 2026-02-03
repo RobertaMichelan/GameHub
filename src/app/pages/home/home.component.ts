@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms'; // Importe o FormsModule
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { LucideAngularModule, Gamepad2, ArrowRight, LogIn, User, X } from 'lucide-angular';
@@ -25,7 +25,7 @@ import { LucideAngularModule, Gamepad2, ArrowRight, LogIn, User, X } from 'lucid
               <h3 class="text-xl font-bold text-white mb-2">Como quer ser chamado?</h3>
               <p class="text-slate-400 text-sm mb-4">Escolha um apelido para jogar.</p>
               
-              <input [(ngModel)]="guestName" (keyup.enter)="confirmGuestLogin()" placeholder="Seu Apelido (ex: Mestre do Bingo)" 
+              <input [(ngModel)]="guestName" (keyup.enter)="confirmGuestLogin()" placeholder="Seu Apelido" 
                      class="w-full bg-slate-950 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 focus:outline-none mb-4 font-bold text-center">
               
               <button (click)="confirmGuestLogin()" [disabled]="!guestName || loading()" 
@@ -40,9 +40,7 @@ import { LucideAngularModule, Gamepad2, ArrowRight, LogIn, User, X } from 'lucid
         
         <div class="relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <img src="assets/finalgame-logo.png" alt="Final Game" class="relative h-32 md:h-40 drop-shadow-2xl animate-float object-contain"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-            <h1 class="hidden text-6xl font-black text-white tracking-tighter" style="display:none">FINAL GAME</h1>
+            <img src="assets/finalgame-logo.png" alt="Final Game" class="relative h-32 md:h-40 drop-shadow-2xl animate-float object-contain">
         </div>
 
         <div class="space-y-4 max-w-xl">
@@ -55,34 +53,28 @@ import { LucideAngularModule, Gamepad2, ArrowRight, LogIn, User, X } from 'lucid
         </div>
 
         <div class="flex flex-col sm:flex-row gap-4 w-full justify-center mt-4">
-            
             <button (click)="handleGoogleLogin()" [disabled]="loading()"
-                class="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg shadow-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-3">
+                class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg shadow-xl flex items-center justify-center gap-3">
                 <lucide-icon [img]="LogIn" class="w-5 h-5"></lucide-icon>
                 <span>Entrar com Google</span>
             </button>
 
             <button (click)="openGuestModal()" [disabled]="loading()"
-                class="px-8 py-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-xl font-bold text-lg shadow-lg transition-all hover:border-slate-500 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3">
+                class="px-8 py-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3">
                 <lucide-icon [img]="User" class="w-5 h-5"></lucide-icon>
                 <span>Jogar como Convidado</span>
             </button>
-        
         </div>
 
         <p class="text-xs text-slate-600 mt-8">
             Ao entrar, você concorda com nossos termos. Convidados têm dados temporários.
         </p>
-
       </div>
     </div>
   `,
   styles: [`
     .animate-float { animation: float 6s ease-in-out infinite; }
-    @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
   `]
 })
 export class HomeComponent {
@@ -90,8 +82,8 @@ export class HomeComponent {
   router = inject(Router);
   
   loading = signal(false);
-  showGuestModal = signal(false); // Controla o modal
-  guestName = ''; // Armazena o nome digitado
+  showGuestModal = signal(false);
+  guestName = '';
   
   readonly Gamepad2 = Gamepad2; readonly ArrowRight = ArrowRight; readonly LogIn = LogIn; readonly User = User; readonly X = X;
 
@@ -99,25 +91,20 @@ export class HomeComponent {
     this.loading.set(true);
     try {
         await this.auth.signInWithGoogle();
-        // O redirecionamento é automático pelo Supabase
     } catch (error) {
         console.error("Erro Google:", error);
-        alert("Erro ao conectar com Google. Verifique o console.");
         this.loading.set(false);
     }
   }
 
   openGuestModal() {
     this.showGuestModal.set(true);
-    // Foca no input se possível (opcional)
   }
 
   async confirmGuestLogin() {
     if (!this.guestName.trim()) return;
-    
     this.loading.set(true);
     try {
-        // Agora passa o nome para o serviço!
         await this.auth.signInAnonymously(this.guestName);
         this.router.navigate(['/lobby']); 
     } catch (error) {

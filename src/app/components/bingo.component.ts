@@ -2,13 +2,24 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Router } from '@angular/router'; // Importe o Router
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2, RefreshCw, Power, CheckCircle, AlertTriangle } from 'lucide-angular';
+import { Router } from '@angular/router';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, X, RefreshCw, Power, CheckCircle, AlertTriangle, Grid3X3 } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
+  // ESTILOS DO CARIMBO
+  styles: [`
+    @keyframes stampIn {
+      0% { transform: scale(3) rotate(-20deg); opacity: 0; }
+      50% { transform: scale(0.8) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .animate-stamp-in {
+      animation: stampIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+  `],
   template: `
     <div class="flex flex-col items-center w-full max-w-2xl mx-auto p-4 pb-20 relative">
       
@@ -17,8 +28,11 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
           <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
              <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                 <div>
-                   <h3 class="text-white font-black text-xl flex items-center gap-2"><lucide-icon [img]="Grid3X3" class="w-5 h-5 text-indigo-500"></lucide-icon> Números</h3>
-                   <p class="text-slate-400 text-xs">Sorteados: {{ history().length }} / 75</p>
+                   <h3 class="text-white font-black text-xl flex items-center gap-2">
+                     <lucide-icon [img]="Grid3X3" class="w-5 h-5 text-indigo-500"></lucide-icon>
+                     Números Sorteados
+                   </h3>
+                   <p class="text-slate-400 text-xs">Total: {{ history().length }} / 75</p>
                 </div>
                 <button (click)="showHistoryModal.set(false)" class="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white"><lucide-icon [img]="X" class="w-6 h-6"></lucide-icon></button>
              </div>
@@ -46,9 +60,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                  <button (click)="validateClaim()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2">
                     <lucide-icon [img]="CheckCircle" class="w-6 h-6"></lucide-icon> CONFERIR CARTELA
                  </button>
-                 <button (click)="rejectClaim()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase">
-                    Ignorar e Continuar
-                 </button>
+                 <button (click)="rejectClaim()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase">Ignorar</button>
               </div>
            </div>
         </div>
@@ -64,7 +76,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
               
               @if (isHost) {
                  <div class="mt-10 flex flex-col gap-3">
-                    <button (click)="restartGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2"><lucide-icon [img]="RefreshCw" class="w-6 h-6"></lucide-icon> Nova Partida (Zerar)</button>
+                    <button (click)="restartGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2"><lucide-icon [img]="RefreshCw" class="w-6 h-6"></lucide-icon> Nova Partida</button>
                     <button (click)="resumeGameAfterWin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded-xl font-bold uppercase shadow-lg flex items-center justify-center gap-2"><lucide-icon [img]="Play" class="w-5 h-5"></lucide-icon> Continuar Jogando</button>
                     <button (click)="endRoom()" class="w-full bg-slate-800 hover:bg-slate-700 text-red-400 border border-slate-600 py-3 rounded-xl font-bold uppercase flex items-center justify-center gap-2"><lucide-icon [img]="Power" class="w-5 h-5"></lucide-icon> Fechar Sala</button>
                  </div>
@@ -87,15 +99,14 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
               <p class="text-xl text-slate-300 font-bold mt-4">O jogo continua!</p>
               @if (isHost) {
                   <button (click)="clearFalseAlarm()" class="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-black uppercase">REMOVER AVISO</button>
-              } @else {
-                  <p class="text-xs text-red-300 mt-4 animate-pulse">Aguardando organizador...</p>
               }
            </div>
         </div>
       }
 
       <div class="mb-6 text-center w-full">
-        <h2 class="text-4xl font-black text-yellow-400 tracking-wider mb-2">BINGO</h2>
+        <h2 class="text-4xl font-black text-yellow-400 drop-shadow-lg tracking-wider mb-2">BINGO</h2>
+        
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full shadow-2xl relative overflow-hidden">
            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse"></div>
            <p class="text-slate-400 text-xs font-bold uppercase mb-2">BOLA DA VEZ</p>
@@ -113,6 +124,10 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
              </div>
            </div>
            
+           <div class="sm:hidden mt-4">
+              <button (click)="showHistoryModal.set(true)" class="text-xs text-indigo-400 font-bold uppercase border border-indigo-500/30 px-3 py-1.5 rounded-full hover:bg-indigo-500/10 transition-colors flex items-center justify-center gap-2 mx-auto"><lucide-icon [img]="Grid3X3" class="w-3 h-3"></lucide-icon> Ver Sorteados ({{ history().length }})</button>
+           </div>
+
            @if (isHost && !winnerName()) {
              <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3 animate-fade-in">
                <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg active:scale-95 disabled:opacity-50">SORTEAR MANUAL</button>
@@ -148,14 +163,17 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 [ngClass]="getButtonClass(num, $index)">
                     
                     @if (num === 0) { 
-                        <div class="relative w-full h-full flex items-center justify-center">
-                            <img src="assets/logo.png" alt="FG" class="w-8 h-8 object-contain opacity-90 drop-shadow-md" (error)="imageError.set(true)" [style.display]="imageError() ? 'none' : 'block'">
-                            @if (imageError()) { <lucide-icon [img]="Gamepad2" class="w-8 h-8 text-indigo-500 opacity-80"></lucide-icon> }
+                        <div class="w-full h-full flex items-center justify-center">
+                            <img src="assets/icon.png" alt="FG" class="w-8 h-8 object-contain opacity-90 drop-shadow-md">
                         </div>
                     } 
                     @else { {{ num }} }
                     
-                    @if (num !== 0 && isMarkedOrDrawn(num, $index)) { <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-30 text-4xl font-black pointer-events-none">X</span> }
+                    @if (num !== 0 && isMarkedOrDrawn(num, $index)) { 
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <img src="assets/stamp.png" class="w-[90%] h-[90%] object-contain animate-stamp-in drop-shadow-md">
+                        </div>
+                    }
                 </button>
             }
           } @else {
@@ -184,7 +202,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   @Input() initialCard: number[] = []; 
   
   supabase = inject(SupabaseService);
-  router = inject(Router); // INJETADO O ROUTER
+  router = inject(Router);
   channel: RealtimeChannel | null = null;
 
   // Estados do Jogo
@@ -198,7 +216,6 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   winnerName = signal<string | null>(null);
   falseAlarmUser = signal<string | null>(null);
   showHistoryModal = signal(false);
-  imageError = signal(false);
   
   // Controle do Host
   isAutoDrawing = signal(false);
@@ -210,7 +227,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
-  readonly Grid3X3 = Grid3X3; readonly X = X; readonly Gamepad2 = Gamepad2;
+  readonly Grid3X3 = Grid3X3; readonly X = X; 
   readonly RefreshCw = RefreshCw; readonly Power = Power; readonly CheckCircle = CheckCircle; readonly AlertTriangle = AlertTriangle;
 
   private autoDrawInterval: any;
@@ -239,8 +256,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   getButtonClass(num: number, index: number): string {
+    // Fundo Escuro para o Ícone Central (FG)
     if (index === 12) return 'bg-slate-950 text-slate-500 border-slate-800 shadow-inner';
-    if (this.isMarkedOrDrawn(num, index)) return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
+    
+    // NOTA: Removi a cor vermelha de fundo para o carimbo aparecer melhor.
+    // Se quiser o fundo vermelho + carimbo, descomente a linha abaixo.
+    // if (this.isMarkedOrDrawn(num, index)) return 'bg-red-100 text-red-900 border-red-300';
+
     return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
   }
 
@@ -274,13 +296,9 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
           this.falseAlarmUser.set(null);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         // REINÍCIO DO JOGO: Se mudou para WAITING, recarrega a página
-         if (payload.new.status === 'WAITING' && this.history().length > 0) {
-            window.location.reload();
-         }
+         if (payload.new.status === 'WAITING' && this.history().length > 0) window.location.reload();
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, () => {
-         // SALA ENCERRADA: Redireciona para o Lobby
          alert('🚫 A sala foi encerrada pelo organizador.');
          this.router.navigate(['/lobby']);
       })
@@ -298,15 +316,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
 
   async validateClaim() {
     if (!this.pendingClaim()) return;
-    
     const { data: winnerName, error } = await this.supabase.client.rpc('verify_card_only', { 
         room_code_param: this.roomId, 
         player_id_param: this.pendingClaim()?.id
     });
 
-    if (error) { 
-        console.error(error); alert("Erro ao conferir."); 
-    } else if (winnerName) {
+    if (error) { console.error(error); alert("Erro ao conferir."); } 
+    else if (winnerName) {
         await this.channel?.send({ type: 'broadcast', event: 'game_win', payload: { winnerName: winnerName } });
         this.winnerName.set(winnerName);
         await this.supabase.client.rpc('finish_game_official', { room_code_param: this.roomId, winner_id_param: this.pendingClaim()?.id });

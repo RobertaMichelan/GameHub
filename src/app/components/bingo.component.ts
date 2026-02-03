@@ -2,7 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2 } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2, RefreshCw, Power } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
@@ -56,10 +56,26 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
            <div class="text-center animate-bounce-in relative px-4 w-full max-w-lg">
               <div class="absolute -top-20 -left-20 w-40 h-40 bg-yellow-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
               <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+              
               <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-2xl mb-4">BINGO!</h1>
               <p class="text-2xl text-white font-bold uppercase tracking-widest mb-6">Vencedor</p>
-              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-xl border-4 border-indigo-400 transform -rotate-2 mb-8 break-words">{{ winnerName() }}</div>
-              <button (click)="closeWinnerModal()" class="mt-8 bg-slate-800 text-white py-3 px-8 rounded-xl font-bold uppercase">Fechar</button>
+              
+              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-xl border-4 border-indigo-400 transform -rotate-2 mb-8 break-words animate-float">
+                 {{ winnerName() }}
+              </div>
+              
+              @if (isHost) {
+                 <div class="mt-10 flex flex-col gap-3">
+                    <button (click)="restartGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                       <lucide-icon [img]="RefreshCw" class="w-6 h-6"></lucide-icon> Iniciar Outra Partida
+                    </button>
+                    <button (click)="endRoom()" class="w-full bg-slate-800 hover:bg-slate-700 text-red-400 hover:text-red-300 py-3 rounded-xl font-bold uppercase border border-slate-600 flex items-center justify-center gap-2">
+                       <lucide-icon [img]="Power" class="w-5 h-5"></lucide-icon> Fechar Sala
+                    </button>
+                 </div>
+              } @else {
+                 <p class="mt-8 text-slate-400 font-bold animate-pulse">Aguardando o organizador...</p>
+              }
            </div>
         </div>
       }
@@ -204,6 +220,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
   readonly Grid3X3 = Grid3X3; readonly X = X; readonly Gamepad2 = Gamepad2;
+  readonly RefreshCw = RefreshCw; readonly Power = Power;
 
   private autoDrawInterval: any;
 
@@ -244,12 +261,8 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   getButtonClass(num: number, index: number): string {
-    if (index === 12) {
-        return 'bg-slate-950 text-slate-500 border-slate-800 shadow-inner';
-    }
-    if (this.isMarkedOrDrawn(num, index)) {
-        return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
-    }
+    if (index === 12) return 'bg-slate-950 text-slate-500 border-slate-800 shadow-inner';
+    if (this.isMarkedOrDrawn(num, index)) return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
     return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
   }
 
@@ -306,10 +319,15 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
       .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
           this.falseAlarmUser.set(payload.username);
       })
+      // NOVO: Escuta evento de Vitória Instantânea
+      .on('broadcast', { event: 'game_win' }, ({ payload }) => {
+          this.stopAutoDraw();
+          this.winnerName.set(payload.winnerName);
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         if (payload.new.winner_id) {
-             this.stopAutoDraw();
-             this.announceWinner(payload.new.winner_id);
+         // Se a sala mudou para WAITING (Reiniciou), recarrega para pegar nova cartela
+         if (payload.new.status === 'WAITING' && this.history().length > 0) {
+            window.location.reload();
          }
       })
       .subscribe();
@@ -366,7 +384,8 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         alert("Erro técnico na conferência."); 
     } 
     else if (winnerName) { 
-        // CORREÇÃO: Define o vencedor LOCALMENTE também, para não depender só do Realtime
+        // BINGO CONFIRMADO: Avisa todos via Broadcast (mais rápido que banco)
+        await this.channel?.send({ type: 'broadcast', event: 'game_win', payload: { winnerName: winnerName } });
         this.winnerName.set(winnerName); 
     }
     else { 
@@ -379,5 +398,20 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   resumeAfterFalseAlarm() { this.falseAlarmUser.set(null); }
+  
+  // --- AÇÕES DO ORGANIZADOR ---
+  async restartGame() {
+    if(!confirm('Tem certeza? Isso vai zerar as cartelas de todos para um novo jogo.')) return;
+    
+    await this.supabase.client.rpc('restart_game', { room_code_param: this.roomId });
+    // O broadcast do status WAITING vai recarregar a tela de todos automaticamente
+  }
+
+  async endRoom() {
+    if(!confirm('Isso vai apagar a sala e desconectar todos. Confirmar?')) return;
+    await this.supabase.client.from('rooms').delete().eq('code', this.roomId);
+    window.location.href = '/lobby';
+  }
+
   toggleMark(i: number) { this.marked.update(m => { m[i] = !m[i]; return [...m]; }); }
 }

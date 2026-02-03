@@ -9,7 +9,7 @@ export class AuthService {
   private supabase = inject(SupabaseService);
   private router = inject(Router);
 
-  // --- ANTIGOS (Para o Build não quebrar) ---
+  // --- ANTIGOS (ESSENCIAIS PARA NÃO QUEBRAR) ---
   async signIn(email: string, password: string) {
     return await this.supabase.client.auth.signInWithPassword({ email, password });
   }
@@ -22,7 +22,7 @@ export class AuthService {
     });
   }
 
-  // --- NOVOS (Para a Home funcionar) ---
+  // --- NOVOS (PARA A HOME) ---
   async signInWithGoogle() {
     const { error } = await this.supabase.client.auth.signInWithOAuth({
       provider: 'google',

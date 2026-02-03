@@ -17,11 +17,14 @@ import { ChatComponent } from '../../components/chat.component';
     <div class="min-h-screen bg-slate-950 text-white flex flex-col font-sans">
       
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
-        <div class="flex items-center gap-3">
-          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-            <lucide-icon [img]="Home" class="w-5 h-5"></lucide-icon>
+        
+        <div class="flex items-center gap-4">
+          <button (click)="leaveRoom()" class="hover:opacity-80 transition-opacity">
+             <img src="assets/finalgame-logo.png" alt="Final Game" class="h-8 md:h-10 drop-shadow-md">
           </button>
-          <div class="h-8 w-[1px] bg-slate-700"></div>
+
+          <div class="h-8 w-[1px] bg-slate-700 mx-2"></div>
+          
           <div class="flex flex-col">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">CÓDIGO</p>
             <h1 class="text-xl font-mono font-bold text-indigo-400 tracking-wider leading-none">{{ roomId }}</h1>
@@ -30,9 +33,9 @@ import { ChatComponent } from '../../components/chat.component';
 
         <div class="flex items-center gap-4">
           @if (roomData()?.status === 'PLAYING') {
-            <div class="flex items-center gap-1 bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold uppercase animate-pulse">
+            <div class="hidden sm:flex items-center gap-1 bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold uppercase animate-pulse">
                <lucide-icon [img]="Lock" class="w-3 h-3"></lucide-icon>
-               <span>Fechada</span>
+               <span>Em Jogo</span>
             </div>
           }
           
@@ -41,9 +44,9 @@ import { ChatComponent } from '../../components/chat.component';
             <span class="text-sm font-bold">{{ players().length }}</span>
           </div>
 
-          <button (click)="logout()" class="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg transition-all text-xs font-bold uppercase border border-red-500/20">
+          <button (click)="logout()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase border border-slate-700">
             <lucide-icon [img]="LogOut" class="w-4 h-4"></lucide-icon>
-            Sair
+            <span class="hidden sm:inline">Sair</span>
           </button>
         </div>
       </header>
@@ -80,17 +83,6 @@ import { ChatComponent } from '../../components/chat.component';
                         <lucide-icon [img]="copied() ? Check : Copy" class="w-6 h-6 text-indigo-500"></lucide-icon>
                       </div>
                       
-                      <div class="text-left mb-6">
-                        <p class="text-xs text-slate-400 font-bold uppercase mb-3 flex items-center gap-2">
-                          <lucide-icon [img]="Settings" class="w-3 h-3"></lucide-icon> Modos de Vitória
-                        </p>
-                        <div class="grid grid-cols-2 gap-3">
-                           <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 opacity-50 cursor-not-allowed">
-                              <span class="text-sm font-bold text-slate-400">Cartela Cheia (Padrão)</span>
-                           </div>
-                        </div>
-                      </div>
-
                       <button (click)="startGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
                         <lucide-icon [img]="Trophy" class="w-5 h-5"></lucide-icon> INICIAR PARTIDA
                       </button>
@@ -176,7 +168,7 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
   private channel: RealtimeChannel | null = null;
-  private heartbeatInterval: any; // Variável para o intervalo do Heartbeat
+  private heartbeatInterval: any;
 
   async ngOnInit() {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
@@ -269,10 +261,10 @@ export class RoomComponent implements OnInit, OnDestroy {
   // --- HEARTBEAT & LIMPEZA ---
   startHeartbeat() {
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-    this.sendHeartbeat(); // Envia o primeiro imediatamente
+    this.sendHeartbeat(); 
     this.heartbeatInterval = setInterval(() => {
         this.sendHeartbeat();
-    }, 120000); // A cada 2 minutos
+    }, 120000); 
   }
 
   async sendHeartbeat() {
@@ -283,7 +275,6 @@ export class RoomComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Limpeza ao Sair
   async leaveRoom() {
     await this.cleanupUser();
     this.router.navigate(['/lobby']);
@@ -303,7 +294,6 @@ export class RoomComponent implements OnInit, OnDestroy {
     }); 
   }
 
-  // DETECTA FECHAMENTO DE ABA
   @HostListener('window:beforeunload')
   async ngOnDestroy() {
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);

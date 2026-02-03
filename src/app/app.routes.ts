@@ -1,11 +1,27 @@
 import { Routes } from '@angular/router';
-import { AuthComponent } from './pages/auth/auth.component';
+import { HomeComponent } from './pages/home/home.component';
 import { LobbyComponent } from './pages/lobby/lobby.component';
 import { RoomComponent } from './pages/room/room.component';
+// AJUSTE AQUI: Apontamos para o caminho onde o arquivo realmente está
+import { AuthGuard } from './core/services/guards/auth.guard'; 
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'auth', pathMatch: 'full' },
-  { path: 'auth', component: AuthComponent },
-  { path: 'lobby', component: LobbyComponent },
-  { path: 'room/:id', component: RoomComponent }
+  { 
+    path: '', 
+    component: HomeComponent 
+  },
+  { 
+    path: 'lobby', 
+    component: LobbyComponent,
+    canActivate: [AuthGuard] 
+  },
+  { 
+    path: 'room/:id', 
+    component: RoomComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: '**', 
+    redirectTo: '' 
+  }
 ];

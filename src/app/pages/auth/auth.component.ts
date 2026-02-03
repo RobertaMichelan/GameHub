@@ -13,12 +13,10 @@ import { LucideAngularModule, LogIn, UserPlus, Ghost } from 'lucide-angular';
     <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div class="bg-slate-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800">
         
-   
-<div class="text-center mb-8">
-  <h1 class="text-3xl font-bold text-white mb-2">Final Game 🎮</h1>
-  <p class="text-slate-400">Sua plataforma de jogos multiplayer</p>
-</div>
-
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold text-white mb-2">Final Game 🎮</h1>
+          <p class="text-slate-400">Sua plataforma de jogos multiplayer</p>
+        </div>
 
         <div class="flex bg-slate-800 p-1 rounded-xl mb-6">
           <button (click)="isLogin.set(true)" 
@@ -110,33 +108,34 @@ export class AuthComponent {
   }
 
   async guestLogin() {
+    // 1. Pergunta o nome ANTES de carregar
+    const nameInput = prompt('Como você quer ser chamado na sala?');
+    
+    // Se cancelar ou deixar vazio, gera um nome aleatório
+    const guestName = nameInput && nameInput.trim() ? nameInput.trim() : `Convidado ${Math.floor(Math.random() * 100)}`;
+
     this.loading.set(true);
     try {
-      // Gera dados aleatórios para o convidado
       const rand = Math.floor(Math.random() * 1000000);
-      const guestEmail = `convidado${rand}@gamehub.temp`; // Email falso
-      const guestPass = `guestpass${rand}`; // Senha falsa
-      const guestName = `Convidado ${Math.floor(Math.random() * 100)}`;
+      const guestEmail = `convidado${rand}@gamehub.temp`; 
+      const guestPass = `guestpass${rand}`; 
 
-      // Tenta cadastrar
+      // Cria a conta com o nome escolhido
       const { data, error } = await this.authService.signUp(guestEmail, guestPass, guestName);
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      // Se cadastrou mas não logou (acontece se Confirm Email estiver ligado), tenta logar
+      // Se não logou automático, força o login
       if (!data.session) {
          const login = await this.authService.signIn(guestEmail, guestPass);
-         if (login.error) throw new Error('Falha ao logar automático. Verifique se "Confirm Email" está desligado no Supabase.');
+         if (login.error) throw new Error('Erro ao logar automaticamente.');
       }
       
-      // Sucesso
       this.router.navigate(['/lobby']);
       
     } catch (error: any) {
       console.error(error);
-      alert('Não foi possível entrar como convidado: ' + error.message);
+      alert('Erro ao entrar como convidado: ' + error.message);
     } finally {
       this.loading.set(false);
     }

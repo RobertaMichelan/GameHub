@@ -106,9 +106,18 @@ export class BingoComponent implements OnInit, OnDestroy {
   cardNumbers = signal<number[]>([]);
   marked = signal<boolean[]>(new Array(25).fill(false));
 
-  ngOnInit() {
+ ngOnInit() {
     if (this.initialCard && this.initialCard.length > 0) {
-      this.cardNumbers.set(this.initialCard);
+      // O banco manda 24 numeros. Precisamos de 25.
+      // Vamos inserir o '0' (Free) na posição 12 (meio da cartela)
+      const fullCard = [...this.initialCard];
+      if (fullCard.length === 24) {
+        fullCard.splice(12, 0, 0); // Insere o 0 no índice 12
+      }
+      
+      this.cardNumbers.set(fullCard);
+      
+      // Marca o meio como FREE
       const newMarks = new Array(25).fill(false);
       newMarks[12] = true; 
       this.marked.set(newMarks);

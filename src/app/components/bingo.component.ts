@@ -193,7 +193,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   
   verifying = signal(false);
   winnerName = signal<string | null>(null);
-  falseAlarmUser = signal<string | null>(null); // Agora guarda O NOME de quem errou
+  falseAlarmUser = signal<string | null>(null);
   showHistoryModal = signal(false);
   
   isAutoDrawing = signal(false);
@@ -303,12 +303,9 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         this.updateNearWinStats();
       })
       .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
-      
-      // NOVA ESCUTA: Alarme Falso (Bronha)
       .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
           this.falseAlarmUser.set(payload.username);
       })
-
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
          if (payload.new.winner_id) {
              this.stopAutoDraw();
@@ -359,7 +356,6 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
 
     const { data: { user } } = await this.supabase.client.auth.getUser();
     
-    // Confere no banco
     const { data: winnerName, error } = await this.supabase.client.rpc('check_bingo_winner', { 
         room_code_param: this.roomId, 
         player_id_param: user?.id 
@@ -369,22 +365,19 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         console.error(error); 
         alert("Erro técnico na conferência."); 
     } 
-    else if (!winnerName) { 
-        // Se a resposta for null, significa que falhou.
-        // AVISAR TODOS QUE DEU BRONHA
+    else if (winnerName) { 
+        // CORREÇÃO: Define o vencedor LOCALMENTE também, para não depender só do Realtime
+        this.winnerName.set(winnerName); 
+    }
+    else { 
         const username = user?.user_metadata['username'] || 'Alguém';
         await this.channel?.send({ type: 'broadcast', event: 'false_alarm', payload: { username: username } });
-        
-        // Mostra localmente também (para garantir)
         this.falseAlarmUser.set(username);
     }
     
     this.verifying.set(false);
   }
 
-  resumeAfterFalseAlarm() { 
-      this.falseAlarmUser.set(null); 
-  }
-  
+  resumeAfterFalseAlarm() { this.falseAlarmUser.set(null); }
   toggleMark(i: number) { this.marked.update(m => { m[i] = !m[i]; return [...m]; }); }
 }

@@ -9,4 +9,4 @@ export class SupabaseService {
   constructor() {
     this.client = createClient(environment.supabaseUrl, environment.supabaseKey);
   }
-}
+}   

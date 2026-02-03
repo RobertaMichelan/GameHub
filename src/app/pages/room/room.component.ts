@@ -201,7 +201,11 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   async logout() {
+    // Limpa sessão local
     await this.authService.signOut();
+    // Limpa dados locais da sala
+    localStorage.clear();
+    // Redireciona
     this.router.navigate(['/auth']);
   }
 

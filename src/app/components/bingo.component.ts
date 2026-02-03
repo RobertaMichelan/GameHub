@@ -2,7 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2 } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
@@ -64,12 +64,18 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
         </div>
       }
 
-      @if (showFalseAlarm()) {
+      @if (falseAlarmUser()) {
         <div class="fixed inset-0 z-[60] flex items-center justify-center bg-red-900/90 backdrop-blur-md animate-fade-in">
            <div class="text-center animate-shake px-6 py-10 bg-slate-900 border-4 border-red-500 rounded-3xl shadow-2xl max-w-md mx-4">
               <lucide-icon [img]="Frown" class="w-24 h-24 text-red-500 mx-auto mb-4"></lucide-icon>
-              <h1 class="text-4xl font-black text-red-500 uppercase leading-none">COMEU<br>BRONHA!</h1>
-              <p class="text-xl text-slate-300 font-bold mt-4">A cartela não está completa.<br><span class="text-yellow-400">Continuem jogando!</span></p>
+              <h1 class="text-4xl font-black text-red-500 uppercase leading-none">ALARME FALSO!</h1>
+              
+              <div class="bg-slate-800 p-4 rounded-xl mt-4 mb-4 border border-red-500/30">
+                 <p class="text-slate-400 text-sm font-bold uppercase mb-1">Quem "Comeu Bronha"?</p>
+                 <p class="text-2xl text-white font-black">{{ falseAlarmUser() }}</p>
+              </div>
+
+              <p class="text-xl text-slate-300 font-bold mt-4">A cartela não estava completa.<br><span class="text-yellow-400">O jogo continua!</span></p>
               <button (click)="resumeAfterFalseAlarm()" class="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-black uppercase">VOLTAR AO JOGO</button>
            </div>
         </div>
@@ -141,7 +147,9 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 class="aspect-square flex items-center justify-center font-bold text-lg sm:text-xl rounded-lg transition-all relative border-2 select-none"
                 [ngClass]="getButtonClass(num, $index)">
                     
-                    @if (num === 0) { <span class="text-[10px] font-black opacity-50 tracking-tighter">FG</span> } 
+                    @if (num === 0) { 
+                        <lucide-icon [img]="Gamepad2" class="w-6 h-6 sm:w-8 sm:h-8 text-indigo-500 opacity-80"></lucide-icon>
+                    } 
                     @else { {{ num }} }
                     
                     @if (num !== 0 && isMarkedOrDrawn(num, $index)) {
@@ -185,7 +193,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   
   verifying = signal(false);
   winnerName = signal<string | null>(null);
-  showFalseAlarm = signal(false);
+  falseAlarmUser = signal<string | null>(null); // Agora guarda O NOME de quem errou
   showHistoryModal = signal(false);
   
   isAutoDrawing = signal(false);
@@ -195,7 +203,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
-  readonly Grid3X3 = Grid3X3; readonly X = X;
+  readonly Grid3X3 = Grid3X3; readonly X = X; readonly Gamepad2 = Gamepad2;
 
   private autoDrawInterval: any;
 
@@ -223,8 +231,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         grid.push(b[row], i[row], n[row], g[row], o[row]);
       }
       this.cardNumbers.set(grid);
-
-      // Garante que o FG (índice 12) comece "marcado" logicamente
+      
       const m = new Array(25).fill(false);
       m[12] = true;
       this.marked.set(m);
@@ -236,19 +243,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     return this.marked()[index] || this.history().includes(num);
   }
 
-  // --- LÓGICA VISUAL ESPECIAL ---
   getButtonClass(num: number, index: number): string {
-    // Caso Especial: FG (Meio) -> Cor do fundo da sala (Escuro)
     if (index === 12) {
         return 'bg-slate-950 text-slate-500 border-slate-800 shadow-inner';
     }
-
-    // Caso Normal: Marcado ou Sorteado -> Vermelho
     if (this.isMarkedOrDrawn(num, index)) {
         return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
     }
-    
-    // Caso Padrão: Branco/Cinza
     return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
   }
 
@@ -302,6 +303,12 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         this.updateNearWinStats();
       })
       .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
+      
+      // NOVA ESCUTA: Alarme Falso (Bronha)
+      .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
+          this.falseAlarmUser.set(payload.username);
+      })
+
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
          if (payload.new.winner_id) {
              this.stopAutoDraw();
@@ -333,14 +340,11 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
     if (attempts >= 200) { this.stopAutoDraw(); return; }
 
-    // 1. Atualiza Visual Local (Host) Imediatamente
     this.lastNumber.set(num);
     this.history.update(h => [...h, num]);
 
-    // 2. Avisa os outros
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
     
-    // 3. Salva no Banco e Confere
     const currentDrawn = [...this.history()];
     await this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId);
     await this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId, current_drawn_numbers: currentDrawn });
@@ -354,16 +358,33 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     this.stopAutoDraw();
 
     const { data: { user } } = await this.supabase.client.auth.getUser();
-    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { 
+    
+    // Confere no banco
+    const { data: winnerName, error } = await this.supabase.client.rpc('check_bingo_winner', { 
         room_code_param: this.roomId, 
         player_id_param: user?.id 
     });
 
-    if (error) { console.error(error); alert("Erro técnico."); }
-    else if (!isWinner) { this.showFalseAlarm.set(true); }
+    if (error) { 
+        console.error(error); 
+        alert("Erro técnico na conferência."); 
+    } 
+    else if (!winnerName) { 
+        // Se a resposta for null, significa que falhou.
+        // AVISAR TODOS QUE DEU BRONHA
+        const username = user?.user_metadata['username'] || 'Alguém';
+        await this.channel?.send({ type: 'broadcast', event: 'false_alarm', payload: { username: username } });
+        
+        // Mostra localmente também (para garantir)
+        this.falseAlarmUser.set(username);
+    }
+    
     this.verifying.set(false);
   }
 
-  resumeAfterFalseAlarm() { this.showFalseAlarm.set(false); }
+  resumeAfterFalseAlarm() { 
+      this.falseAlarmUser.set(null); 
+  }
+  
   toggleMark(i: number) { this.marked.update(m => { m[i] = !m[i]; return [...m]; }); }
 }

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -176,14 +176,11 @@ export class RoomComponent implements OnInit, OnDestroy {
 
   isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
   private channel: RealtimeChannel | null = null;
+  private heartbeatInterval: any; // Variável para o intervalo do Heartbeat
 
   async ngOnInit() {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
     if (this.roomId) await this.connectToRoom();
-  }
-
-  ngOnDestroy() {
-    if (this.channel) this.supabase.client.removeChannel(this.channel);
   }
 
   async logout() {
@@ -195,27 +192,17 @@ export class RoomComponent implements OnInit, OnDestroy {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       this.currentUser.set(user);
 
-      // 1. Busca dados da sala
       const { data: room, error } = await this.supabase.client.from('rooms').select('*').eq('code', this.roomId).single();
       if (error) throw error;
       this.roomData.set(room);
 
-      // --- BLOQUEIO DE ENTRADA ---
-      // Verifica se o usuário JÁ é um jogador desta sala
-      const { data: existingPlayer } = await this.supabase.client
-          .from('room_players')
-          .select('*')
-          .eq('room_code', this.roomId)
-          .eq('user_id', user?.id)
-          .maybeSingle();
+      const { data: existingPlayer } = await this.supabase.client.from('room_players').select('*').eq('room_code', this.roomId).eq('user_id', user?.id).maybeSingle();
 
-      // SE o jogo já começou E ele NÃO está na lista -> Bloqueia
       if (room.status === 'PLAYING' && !existingPlayer) {
           alert('🚫 O jogo já começou e novos participantes não podem entrar nesta rodada.');
           this.router.navigate(['/lobby']);
           return;
       }
-      // ---------------------------
 
       if (user) {
         const username = user.user_metadata['username'] || 'Convidado';
@@ -233,6 +220,9 @@ export class RoomComponent implements OnInit, OnDestroy {
           }
         }
         if (myCard) this.userCard.set(myCard);
+        
+        // INICIA O HEARTBEAT
+        this.startHeartbeat();
       }
 
       this.fetchPlayers();
@@ -276,6 +266,48 @@ export class RoomComponent implements OnInit, OnDestroy {
     }
   }
 
-  leaveRoom() { this.router.navigate(['/lobby']); }
-  copyRoomCode() { navigator.clipboard.writeText(this.roomId).then(() => { this.copied.set(true); setTimeout(() => this.copied.set(false), 2000); }); }
+  // --- HEARTBEAT & LIMPEZA ---
+  startHeartbeat() {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.sendHeartbeat(); // Envia o primeiro imediatamente
+    this.heartbeatInterval = setInterval(() => {
+        this.sendHeartbeat();
+    }, 120000); // A cada 2 minutos
+  }
+
+  async sendHeartbeat() {
+    if (!this.currentUser() || !this.roomId) return;
+    await this.supabase.client.rpc('update_heartbeat', { 
+        room_code_param: this.roomId, 
+        user_id_param: this.currentUser().id 
+    });
+  }
+
+  // Limpeza ao Sair
+  async leaveRoom() {
+    await this.cleanupUser();
+    this.router.navigate(['/lobby']);
+  }
+
+  async cleanupUser() {
+    const user = this.currentUser();
+    if (user) {
+       await this.supabase.client.from('room_players').delete().eq('room_code', this.roomId).eq('user_id', user.id);
+    }
+  }
+
+  copyRoomCode() { 
+    navigator.clipboard.writeText(this.roomId).then(() => { 
+        this.copied.set(true); 
+        setTimeout(() => this.copied.set(false), 2000); 
+    }); 
+  }
+
+  // DETECTA FECHAMENTO DE ABA
+  @HostListener('window:beforeunload')
+  async ngOnDestroy() {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    this.cleanupUser();
+    if (this.channel) this.supabase.client.removeChannel(this.channel);
+  }
 }

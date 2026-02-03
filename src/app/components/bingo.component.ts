@@ -2,7 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, RefreshCw, Power } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2, RefreshCw, Power, CheckCircle, AlertTriangle } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
@@ -16,10 +16,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
           <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
              <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                 <div>
-                   <h3 class="text-white font-black text-xl flex items-center gap-2">
-                     <lucide-icon [img]="Grid3X3" class="w-5 h-5 text-indigo-500"></lucide-icon>
-                     Números
-                   </h3>
+                   <h3 class="text-white font-black text-xl flex items-center gap-2"><lucide-icon [img]="Grid3X3" class="w-5 h-5 text-indigo-500"></lucide-icon> Números</h3>
                    <p class="text-slate-400 text-xs">Sorteados: {{ history().length }} / 75</p>
                 </div>
                 <button (click)="showHistoryModal.set(false)" class="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white"><lucide-icon [img]="X" class="w-6 h-6"></lucide-icon></button>
@@ -35,12 +32,23 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
         </div>
       }
 
-      @if (nearWins() > 0 && !winnerName()) {
-        <div class="fixed top-20 right-4 z-40 animate-bounce-in">
-           <div class="bg-pink-600 text-white px-4 py-2 rounded-full shadow-xl border-2 border-pink-400 flex items-center gap-2 animate-pulse">
-              <lucide-icon [img]="Heart" class="w-6 h-6 fill-current"></lucide-icon>
-              <span class="font-black text-lg">{{ nearWins() }}</span>
-              <span class="text-xs font-bold uppercase tracking-tighter">Por uma boa!</span>
+      @if (isHost && pendingClaim()) {
+        <div class="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-md animate-bounce-in px-4">
+           <div class="bg-slate-900 border-2 border-yellow-500 w-full max-w-md rounded-2xl shadow-[0_0_50px_rgba(234,179,8,0.3)] p-6 text-center">
+              <div class="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                 <lucide-icon [img]="AlertTriangle" class="w-8 h-8 text-yellow-500"></lucide-icon>
+              </div>
+              <h2 class="text-2xl font-black text-white mb-2">PEDIDO DE BINGO!</h2>
+              <p class="text-slate-300 mb-6">O jogador <strong class="text-yellow-400 text-xl">{{ pendingClaim()?.name }}</strong> diz que ganhou.</p>
+              
+              <div class="flex flex-col gap-3">
+                 <button (click)="validateClaim()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2">
+                    <lucide-icon [img]="CheckCircle" class="w-6 h-6"></lucide-icon> CONFERIR CARTELA
+                 </button>
+                 <button (click)="rejectClaim()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase">
+                    Ignorar e Continuar
+                 </button>
+              </div>
            </div>
         </div>
       }
@@ -49,18 +57,18 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
         <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in">
            <div class="text-center animate-bounce-in relative px-4 w-full max-w-lg">
               <div class="absolute -top-20 -left-20 w-40 h-40 bg-yellow-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
-              <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
               <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-2xl mb-4">BINGO!</h1>
-              <p class="text-2xl text-white font-bold uppercase tracking-widest mb-6">Vencedor</p>
-              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-xl border-4 border-indigo-400 transform -rotate-2 mb-8 break-words animate-float">{{ winnerName() }}</div>
+              <p class="text-2xl text-white font-bold uppercase tracking-widest mb-6">Vencedor Confirmado</p>
+              <div class="bg-indigo-600 text-white text-3xl md:text-5xl font-black px-8 py-6 rounded-2xl shadow-xl border-4 border-indigo-400 transform -rotate-2 mb-8 break-words">{{ winnerName() }}</div>
               
               @if (isHost) {
                  <div class="mt-10 flex flex-col gap-3">
-                    <button (click)="restartGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2 active:scale-95"><lucide-icon [img]="RefreshCw" class="w-6 h-6"></lucide-icon> Iniciar Outra Partida</button>
-                    <button (click)="endRoom()" class="w-full bg-slate-800 hover:bg-slate-700 text-red-400 hover:text-red-300 py-3 rounded-xl font-bold uppercase border border-slate-600 flex items-center justify-center gap-2"><lucide-icon [img]="Power" class="w-5 h-5"></lucide-icon> Fechar Sala</button>
+                    <button (click)="restartGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-black uppercase shadow-lg flex items-center justify-center gap-2"><lucide-icon [img]="RefreshCw" class="w-6 h-6"></lucide-icon> Nova Partida (Zerar)</button>
+                    <button (click)="resumeGameAfterWin()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded-xl font-bold uppercase shadow-lg flex items-center justify-center gap-2"><lucide-icon [img]="Play" class="w-5 h-5"></lucide-icon> Continuar Jogando</button>
+                    <button (click)="endRoom()" class="w-full bg-slate-800 hover:bg-slate-700 text-red-400 border border-slate-600 py-3 rounded-xl font-bold uppercase flex items-center justify-center gap-2"><lucide-icon [img]="Power" class="w-5 h-5"></lucide-icon> Fechar Sala</button>
                  </div>
               } @else {
-                 <p class="mt-8 text-slate-400 font-bold animate-pulse">Aguardando o organizador...</p>
+                 <p class="mt-8 text-slate-400 font-bold animate-pulse">Aguardando decisão do organizador...</p>
               }
            </div>
         </div>
@@ -76,7 +84,11 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                  <p class="text-2xl text-white font-black">{{ falseAlarmUser() }}</p>
               </div>
               <p class="text-xl text-slate-300 font-bold mt-4">O jogo continua!</p>
-              <button (click)="resumeAfterFalseAlarm()" class="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-black uppercase">VOLTAR AO JOGO</button>
+              @if (isHost) {
+                  <button (click)="clearFalseAlarm()" class="w-full mt-6 bg-red-600 text-white py-3 rounded-xl font-black uppercase">REMOVER AVISO</button>
+              } @else {
+                  <p class="text-xs text-red-300 mt-4 animate-pulse">Aguardando organizador...</p>
+              }
            </div>
         </div>
       }
@@ -99,11 +111,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 </div>
              </div>
            </div>
-            
-           <div class="sm:hidden mt-4">
-              <button (click)="showHistoryModal.set(true)" class="text-xs text-indigo-400 font-bold uppercase border border-indigo-500/30 px-3 py-1.5 rounded-full hover:bg-indigo-500/10 transition-colors flex items-center justify-center gap-2 mx-auto"><lucide-icon [img]="Grid3X3" class="w-3 h-3"></lucide-icon> Ver Sorteados ({{ history().length }})</button>
-           </div>
-
+           
            @if (isHost && !winnerName()) {
              <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3 animate-fade-in">
                <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg active:scale-95 disabled:opacity-50">SORTEAR MANUAL</button>
@@ -139,7 +147,10 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 [ngClass]="getButtonClass(num, $index)">
                     
                     @if (num === 0) { 
-                        <img src="assets/logo-bingo.png" alt="Free" class="w-8 h-8 object-contain opacity-90 drop-shadow-md">
+                        <div class="relative w-full h-full flex items-center justify-center">
+                            <img src="assets/logo.png" alt="FG" class="w-8 h-8 object-contain opacity-90 drop-shadow-md" (error)="imageError.set(true)" [style.display]="imageError() ? 'none' : 'block'">
+                            @if (imageError()) { <lucide-icon [img]="Gamepad2" class="w-8 h-8 text-indigo-500 opacity-80"></lucide-icon> }
+                        </div>
                     } 
                     @else { {{ num }} }
                     
@@ -156,8 +167,8 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
 
         @if (!winnerName()) {
             <div class="mt-6">
-              <button (click)="checkBingo()" [disabled]="verifying()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 transition-all text-xl flex items-center justify-center gap-2 active:border-b-0 active:translate-y-1">
-                <lucide-icon [img]="Trophy" class="w-6 h-6"></lucide-icon> {{ verifying() ? 'CONFERINDO...' : 'BINGO!' }}
+              <button (click)="requestBingoClaim()" [disabled]="verifying()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 transition-all text-xl flex items-center justify-center gap-2 active:border-b-0 active:translate-y-1">
+                <lucide-icon [img]="Trophy" class="w-6 h-6"></lucide-icon> {{ verifying() ? 'AVISAR ORGANIZADOR...' : 'BINGO!' }}
               </button>
             </div>
         }
@@ -174,25 +185,31 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   supabase = inject(SupabaseService);
   channel: RealtimeChannel | null = null;
 
+  // Estados do Jogo
   lastNumber = signal<number | null>(null);
   history = signal<number[]>([]);
   cardNumbers = signal<number[]>([]);
   marked = signal<boolean[]>(new Array(25).fill(false));
   
+  // Estados de Controle
   verifying = signal(false);
   winnerName = signal<string | null>(null);
   falseAlarmUser = signal<string | null>(null);
   showHistoryModal = signal(false);
+  imageError = signal(false);
   
+  // Controle do Host
   isAutoDrawing = signal(false);
   drawSpeed = signal(4000); 
   nearWins = signal(0); 
+  pendingClaim = signal<{name: string, id: string} | null>(null);
 
+  // Ícones
   readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
-  readonly Grid3X3 = Grid3X3; readonly X = X; 
-  readonly RefreshCw = RefreshCw; readonly Power = Power;
+  readonly Grid3X3 = Grid3X3; readonly X = X; readonly Gamepad2 = Gamepad2;
+  readonly RefreshCw = RefreshCw; readonly Power = Power; readonly CheckCircle = CheckCircle; readonly AlertTriangle = AlertTriangle;
 
   private autoDrawInterval: any;
 
@@ -215,16 +232,8 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
       const grid: number[] = [];
       for (let row = 0; row < 5; row++) grid.push(b[row], i[row], n[row], g[row], o[row]);
       this.cardNumbers.set(grid);
-      
-      const m = new Array(25).fill(false);
-      m[12] = true;
-      this.marked.set(m);
+      const m = new Array(25).fill(false); m[12] = true; this.marked.set(m);
     }
-  }
-
-  isMarkedOrDrawn(num: number, index: number): boolean {
-    if (num === 0) return true;
-    return this.marked()[index] || this.history().includes(num);
   }
 
   getButtonClass(num: number, index: number): string {
@@ -233,45 +242,9 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
   }
 
-  ngOnDestroy() {
-    this.stopAutoDraw();
-    if (this.channel) this.supabase.client.removeChannel(this.channel);
-  }
-
-  toggleAutoDraw() {
-    if (this.isAutoDrawing()) {
-      this.stopAutoDraw();
-    } else {
-      this.isAutoDrawing.set(true);
-      this.drawNumber(); 
-      if (this.autoDrawInterval) clearInterval(this.autoDrawInterval);
-      this.autoDrawInterval = setInterval(() => {
-        if (this.history().length >= 75 || this.winnerName()) {
-          this.stopAutoDraw();
-          return;
-        }
-        this.drawNumber();
-      }, this.drawSpeed()); 
-    }
-  }
-
-  stopAutoDraw() {
-    this.isAutoDrawing.set(false);
-    if (this.autoDrawInterval) {
-        clearInterval(this.autoDrawInterval);
-        this.autoDrawInterval = null;
-    }
-  }
-
-  async recoverGameState() {
-      const { data } = await this.supabase.client.from('rooms').select('drawn_numbers, winner_id').eq('code', this.roomId).single();
-      if (data?.drawn_numbers) {
-          this.history.set(data.drawn_numbers);
-          const last = data.drawn_numbers[data.drawn_numbers.length - 1];
-          if (last) this.lastNumber.set(last);
-      }
-      if (data?.winner_id) this.announceWinner(data.winner_id);
-      this.updateNearWinStats();
+  isMarkedOrDrawn(num: number, index: number): boolean {
+    if (num === 0) return true;
+    return this.marked()[index] || this.history().includes(num);
   }
 
   setupRealtime() {
@@ -283,102 +256,112 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         this.updateNearWinStats();
       })
       .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
-      .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
-          this.falseAlarmUser.set(payload.username);
+      .on('broadcast', { event: 'claim_attempt' }, ({ payload }) => {
+          this.stopAutoDraw(); 
+          if (this.isHost) {
+              this.pendingClaim.set(payload); 
+          }
       })
       .on('broadcast', { event: 'game_win' }, ({ payload }) => {
-          this.stopAutoDraw();
-          this.winnerName.set(payload.winnerName);
+          this.winnerName.set(payload.winnerName || 'Vencedor'); // CORREÇÃO: Garante string
+          this.pendingClaim.set(null); 
+      })
+      .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
+          this.pendingClaim.set(null);
+          this.falseAlarmUser.set(payload.username || 'Alguém'); // CORREÇÃO: Garante string
+      })
+      .on('broadcast', { event: 'clear_alarm' }, () => {
+          this.falseAlarmUser.set(null);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         // Se a sala mudou para WAITING (Reiniciou), recarrega
-         if (payload.new.status === 'WAITING' && this.history().length > 0) {
-            window.location.reload();
-         }
+         if (payload.new.status === 'WAITING' && this.history().length > 0) window.location.reload();
       })
       .subscribe();
   }
 
+  async requestBingoClaim() {
+    this.verifying.set(true);
+    const { data: { user } } = await this.supabase.client.auth.getUser();
+    const username = user?.user_metadata['username'] || 'Alguém';
+    await this.channel?.send({ type: 'broadcast', event: 'claim_attempt', payload: { name: username, id: user?.id } });
+    alert('🔔 O organizador foi avisado! Aguarde a conferência na tela.');
+    this.verifying.set(false);
+  }
+
+  async validateClaim() {
+    if (!this.pendingClaim()) return;
+    
+    const { data: winnerName, error } = await this.supabase.client.rpc('verify_card_only', { 
+        room_code_param: this.roomId, 
+        player_id_param: this.pendingClaim()?.id
+    });
+
+    if (error) { 
+        console.error(error); alert("Erro ao conferir."); 
+    } else if (winnerName) {
+        await this.channel?.send({ type: 'broadcast', event: 'game_win', payload: { winnerName: winnerName } });
+        this.winnerName.set(winnerName);
+        await this.supabase.client.rpc('finish_game_official', { room_code_param: this.roomId, winner_id_param: this.pendingClaim()?.id });
+        this.pendingClaim.set(null);
+    } else {
+        await this.channel?.send({ type: 'broadcast', event: 'false_alarm', payload: { username: this.pendingClaim()?.name } });
+        this.falseAlarmUser.set(this.pendingClaim()?.name || null);
+        this.pendingClaim.set(null);
+    }
+  }
+
+  rejectClaim() { this.pendingClaim.set(null); }
+
+  async clearFalseAlarm() {
+      await this.channel?.send({ type: 'broadcast', event: 'clear_alarm', payload: {} });
+      this.falseAlarmUser.set(null);
+  }
+
+  async resumeGameAfterWin() {
+      await this.supabase.client.from('rooms').update({ winner_id: null, status: 'PLAYING' }).eq('code', this.roomId);
+      this.winnerName.set(null);
+  }
+
+  ngOnDestroy() { this.stopAutoDraw(); if (this.channel) this.supabase.client.removeChannel(this.channel); }
+  
+  toggleAutoDraw() {
+    if (this.isAutoDrawing()) { this.stopAutoDraw(); } 
+    else { this.isAutoDrawing.set(true); this.drawNumber(); 
+    this.autoDrawInterval = setInterval(() => { if (this.history().length >= 75 || this.winnerName() || this.pendingClaim()) { this.stopAutoDraw(); return; } this.drawNumber(); }, this.drawSpeed()); }
+  }
+  
+  stopAutoDraw() { this.isAutoDrawing.set(false); if (this.autoDrawInterval) clearInterval(this.autoDrawInterval); }
+
+  async drawNumber() {
+    if (!this.isHost || this.winnerName() || this.pendingClaim()) return;
+    let num; do { num = Math.floor(Math.random() * 75) + 1; } while (this.history().includes(num)); 
+    this.lastNumber.set(num); this.history.update(h => [...h, num]);
+    await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
+    const currentDrawn = [...this.history()];
+    this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId).then();
+    this.updateNearWinStats();
+  }
+
+  async recoverGameState() {
+      const { data } = await this.supabase.client.from('rooms').select('drawn_numbers, winner_id').eq('code', this.roomId).single();
+      if (data?.drawn_numbers) { this.history.set(data.drawn_numbers); if (data.drawn_numbers.length) this.lastNumber.set(data.drawn_numbers[data.drawn_numbers.length-1]); }
+      if (data?.winner_id) this.announceWinner(data.winner_id);
+      this.updateNearWinStats();
+  }
+  
   async announceWinner(winnerId: string) {
       const { data } = await this.supabase.client.from('room_players').select('username').eq('room_code', this.roomId).eq('user_id', winnerId).single();
       if (data) this.winnerName.set(data.username);
   }
-
-  closeWinnerModal() { this.winnerName.set(null); }
-
-  async updateNearWinStats() {
-    const { data: count } = await this.supabase.client.rpc('get_near_win_count', { room_code_param: this.roomId });
-    this.nearWins.set(count || 0);
-    if (this.isHost) await this.channel?.send({ type: 'broadcast', event: 'stats_update', payload: { nearWins: count || 0 } });
-  }
-
-  async drawNumber() {
-    if (!this.isHost || this.winnerName()) return;
-    if (this.history().length >= 75) { this.stopAutoDraw(); return; }
-
-    let num;
-    let attempts = 0;
-    do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
-    if (attempts >= 200) { this.stopAutoDraw(); return; }
-
-    // Atualiza Visual Imediato
-    this.lastNumber.set(num);
-    this.history.update(h => [...h, num]);
-
-    await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
-    
-    // Atualiza DB
-    const currentDrawn = [...this.history()];
-    this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId).then(() => {
-        this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId, current_drawn_numbers: currentDrawn });
-    });
-    
-    this.updateNearWinStats();
-  }
-
-  async checkBingo() {
-    this.verifying.set(true);
-    await this.channel?.send({ type: 'broadcast', event: 'stop_drawing', payload: {} });
-    this.stopAutoDraw();
-
-    const { data: { user } } = await this.supabase.client.auth.getUser();
-    
-    const { data: winnerName, error } = await this.supabase.client.rpc('check_bingo_winner', { 
-        room_code_param: this.roomId, 
-        player_id_param: user?.id 
-    });
-
-    if (error) { 
-        console.error(error); 
-        alert("Erro técnico na conferência. Tente novamente."); 
-    } 
-    else if (winnerName) { 
-        // VITÓRIA
-        await this.channel?.send({ type: 'broadcast', event: 'game_win', payload: { winnerName: winnerName } });
-        this.winnerName.set(winnerName); 
-    }
-    else { 
-        // BRONHA
-        const username = user?.user_metadata['username'] || 'Alguém';
-        await this.channel?.send({ type: 'broadcast', event: 'false_alarm', payload: { username: username } });
-        this.falseAlarmUser.set(username);
-    }
-    
-    this.verifying.set(false);
-  }
-
-  resumeAfterFalseAlarm() { this.falseAlarmUser.set(null); }
   
-  async restartGame() {
-    if(!confirm('Tem certeza? Isso vai zerar as cartelas de todos para um novo jogo.')) return;
-    await this.supabase.client.rpc('restart_game', { room_code_param: this.roomId });
-  }
-
-  async endRoom() {
-    if(!confirm('Apagar a sala?')) return;
-    await this.supabase.client.from('rooms').delete().eq('code', this.roomId);
-    window.location.href = '/lobby';
-  }
+  closeWinnerModal() { /* Bloqueado para jogadores */ }
+  async updateNearWinStats() { if (this.isHost) { const { data } = await this.supabase.client.rpc('get_near_win_count', { room_code_param: this.roomId }); this.nearWins.set(data || 0); await this.channel?.send({ type: 'broadcast', event: 'stats_update', payload: { nearWins: data || 0 } }); } }
+  resumeAfterFalseAlarm() { this.falseAlarmUser.set(null); }
+  async restartGame() { if(confirm('Zerar tudo?')) await this.supabase.client.rpc('restart_game', { room_code_param: this.roomId }); }
+  async endRoom() { if(confirm('Apagar sala?')) { await this.supabase.client.from('rooms').delete().eq('code', this.roomId); window.location.href = '/lobby'; } }
+  
+  // Função necessária para checkBingo (não usada mais, mas para evitar erro de compilação se o template chamar)
+  async checkBingo() { this.requestBingoClaim(); }
 
   toggleMark(i: number) { this.marked.update(m => { m[i] = !m[i]; return [...m]; }); }
 }

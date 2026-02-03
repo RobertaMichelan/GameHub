@@ -9,7 +9,7 @@ export class AuthService {
   private supabase = inject(SupabaseService);
   private router = inject(Router);
 
-  // --- ANTIGOS (ESSENCIAIS PARA NÃO QUEBRAR) ---
+  // --- ANTIGOS ---
   async signIn(email: string, password: string) {
     return await this.supabase.client.auth.signInWithPassword({ email, password });
   }
@@ -22,7 +22,7 @@ export class AuthService {
     });
   }
 
-  // --- NOVOS (PARA A HOME) ---
+  // --- NOVOS ---
   async signInWithGoogle() {
     const { error } = await this.supabase.client.auth.signInWithOAuth({
       provider: 'google',
@@ -34,7 +34,8 @@ export class AuthService {
     if (error) throw error;
   }
 
-  async signInAnonymously(username: string) {
+  // AQUI ESTA O TRUQUE: Adicionamos "= 'Convidado'" para não dar erro se vier vazio
+  async signInAnonymously(username: string = 'Convidado') {
     const { error } = await this.supabase.client.auth.signInAnonymously({
       options: { data: { username: username } }
     });

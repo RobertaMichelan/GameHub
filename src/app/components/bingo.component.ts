@@ -2,6 +2,7 @@ import { Component, Input, signal, OnInit, OnDestroy, OnChanges, SimpleChanges, 
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { Router } from '@angular/router'; // Importe o Router
 import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X, Gamepad2, RefreshCw, Power, CheckCircle, AlertTriangle } from 'lucide-angular';
 
 @Component({
@@ -183,6 +184,7 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   @Input() initialCard: number[] = []; 
   
   supabase = inject(SupabaseService);
+  router = inject(Router); // INJETADO O ROUTER
   channel: RealtimeChannel | null = null;
 
   // Estados do Jogo
@@ -258,23 +260,29 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
       .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
       .on('broadcast', { event: 'claim_attempt' }, ({ payload }) => {
           this.stopAutoDraw(); 
-          if (this.isHost) {
-              this.pendingClaim.set(payload); 
-          }
+          if (this.isHost) this.pendingClaim.set(payload); 
       })
       .on('broadcast', { event: 'game_win' }, ({ payload }) => {
-          this.winnerName.set(payload.winnerName || 'Vencedor'); // CORREÇÃO: Garante string
+          this.winnerName.set(payload.winnerName || 'Vencedor'); 
           this.pendingClaim.set(null); 
       })
       .on('broadcast', { event: 'false_alarm' }, ({ payload }) => {
           this.pendingClaim.set(null);
-          this.falseAlarmUser.set(payload.username || 'Alguém'); // CORREÇÃO: Garante string
+          this.falseAlarmUser.set(payload.username || 'Alguém');
       })
       .on('broadcast', { event: 'clear_alarm' }, () => {
           this.falseAlarmUser.set(null);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         if (payload.new.status === 'WAITING' && this.history().length > 0) window.location.reload();
+         // REINÍCIO DO JOGO: Se mudou para WAITING, recarrega a página
+         if (payload.new.status === 'WAITING' && this.history().length > 0) {
+            window.location.reload();
+         }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, () => {
+         // SALA ENCERRADA: Redireciona para o Lobby
+         alert('🚫 A sala foi encerrada pelo organizador.');
+         this.router.navigate(['/lobby']);
       })
       .subscribe();
   }

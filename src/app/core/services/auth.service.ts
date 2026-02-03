@@ -9,9 +9,8 @@ export class AuthService {
   private supabase = inject(SupabaseService);
   private router = inject(Router);
 
-  // --- MÉTODOS ANTIGOS (Recuperados para corrigir o erro de Build) ---
+  // --- MÉTODOS ANTIGOS (NECESSÁRIOS PARA O BUILD PASSAR) ---
   
-  // Login com Email e Senha
   async signIn(email: string, password: string) {
     return await this.supabase.client.auth.signInWithPassword({
       email,
@@ -19,7 +18,6 @@ export class AuthService {
     });
   }
 
-  // Cadastro com Email e Senha
   async signUp(email: string, password: string, username: string) {
     return await this.supabase.client.auth.signUp({
       email,
@@ -32,34 +30,25 @@ export class AuthService {
     });
   }
 
-  // --- MÉTODOS NOVOS (Para a Home e Lobby) ---
+  // --- MÉTODOS NOVOS (NECESSÁRIOS PARA A HOME) ---
 
-  // Login com Google
   async signInWithGoogle() {
     const { error } = await this.supabase.client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/lobby`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     });
     if (error) throw error;
   }
 
-  // Login Anônimo (Com suporte a apelido)
   async signInAnonymously(username: string) {
     const { error } = await this.supabase.client.auth.signInAnonymously({
-      options: {
-        data: { username: username }
-      }
+      options: { data: { username: username } }
     });
     if (error) throw error;
   }
-
-  // --- GERAIS ---
 
   async signOut() {
     await this.supabase.client.auth.signOut();

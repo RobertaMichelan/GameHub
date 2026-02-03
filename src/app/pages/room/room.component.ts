@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { AuthService } from '../../core/services/auth.service'; // Importar Auth
-import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings, Eye, LogOut } from 'lucide-angular';
+import { AuthService } from '../../core/services/auth.service';
+import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings, Eye, LogOut, Lock } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { BingoComponent } from '../../components/bingo.component';
 import { ChatComponent } from '../../components/chat.component';
@@ -18,12 +18,10 @@ import { ChatComponent } from '../../components/chat.component';
       
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
         <div class="flex items-center gap-3">
-          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Voltar ao Lobby">
+          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
             <lucide-icon [img]="Home" class="w-5 h-5"></lucide-icon>
           </button>
-          
           <div class="h-8 w-[1px] bg-slate-700"></div>
-          
           <div class="flex flex-col">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">CÓDIGO</p>
             <h1 class="text-xl font-mono font-bold text-indigo-400 tracking-wider leading-none">{{ roomId }}</h1>
@@ -31,6 +29,13 @@ import { ChatComponent } from '../../components/chat.component';
         </div>
 
         <div class="flex items-center gap-4">
+          @if (roomData()?.status === 'PLAYING') {
+            <div class="flex items-center gap-1 bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold uppercase animate-pulse">
+               <lucide-icon [img]="Lock" class="w-3 h-3"></lucide-icon>
+               <span>Fechada</span>
+            </div>
+          }
+          
           <div class="hidden sm:flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
             <lucide-icon [img]="Users" class="w-4 h-4 text-indigo-400"></lucide-icon>
             <span class="text-sm font-bold">{{ players().length }}</span>
@@ -80,22 +85,9 @@ import { ChatComponent } from '../../components/chat.component';
                           <lucide-icon [img]="Settings" class="w-3 h-3"></lucide-icon> Modos de Vitória
                         </p>
                         <div class="grid grid-cols-2 gap-3">
-                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
-                            <input type="checkbox" [checked]="hasMode('FULL')" (change)="toggleMode('FULL')" class="w-4 h-4 accent-indigo-500">
-                            <span class="text-sm font-bold">Cartela Cheia</span>
-                          </label>
-                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
-                            <input type="checkbox" [checked]="hasMode('LINE')" (change)="toggleMode('LINE')" class="w-4 h-4 accent-indigo-500">
-                            <span class="text-sm font-bold">Linha</span>
-                          </label>
-                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
-                            <input type="checkbox" [checked]="hasMode('COLUMN')" (change)="toggleMode('COLUMN')" class="w-4 h-4 accent-indigo-500">
-                            <span class="text-sm font-bold">Coluna</span>
-                          </label>
-                          <label class="flex items-center gap-3 bg-slate-950 p-3 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-colors">
-                            <input type="checkbox" [checked]="hasMode('DIAGONAL')" (change)="toggleMode('DIAGONAL')" class="w-4 h-4 accent-indigo-500">
-                            <span class="text-sm font-bold">Diagonal</span>
-                          </label>
+                           <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 opacity-50 cursor-not-allowed">
+                              <span class="text-sm font-bold text-slate-400">Cartela Cheia (Padrão)</span>
+                           </div>
                         </div>
                       </div>
 
@@ -116,7 +108,7 @@ import { ChatComponent } from '../../components/chat.component';
                         <div class="grid grid-cols-5 gap-1 text-[10px]">
                            @for (n of getPreviewCard(); track $index) {
                              <div class="aspect-square bg-slate-800 flex items-center justify-center rounded text-slate-300 font-bold">
-                               {{ n === 0 ? '★' : n }}
+                               {{ n === 0 ? 'FG' : n }}
                              </div>
                            }
                         </div>
@@ -169,14 +161,9 @@ export class RoomComponent implements OnInit, OnDestroy {
   supabase = inject(SupabaseService);
   authService = inject(AuthService);
   
-  readonly Home = Home;
-  readonly Users = Users;
-  readonly Trophy = Trophy;
-  readonly Copy = Copy;
-  readonly Check = Check;
-  readonly Settings = Settings;
-  readonly Eye = Eye;
-  readonly LogOut = LogOut;
+  readonly Home = Home; readonly Users = Users; readonly Trophy = Trophy;
+  readonly Copy = Copy; readonly Check = Check; readonly Settings = Settings;
+  readonly Eye = Eye; readonly LogOut = LogOut; readonly Lock = Lock;
 
   roomId = '';
   loading = signal(true);
@@ -186,7 +173,6 @@ export class RoomComponent implements OnInit, OnDestroy {
   players = signal<any[]>([]);
   currentUser = signal<any>(null);
   userCard = signal<number[]>([]);
-  selectedModes = signal<string[]>(['FULL']);
 
   isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
   private channel: RealtimeChannel | null = null;
@@ -201,12 +187,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   async logout() {
-    // Limpa sessão local
     await this.authService.signOut();
-    // Limpa dados locais da sala
-    localStorage.clear();
-    // Redireciona
-    this.router.navigate(['/auth']);
   }
 
   async connectToRoom() {
@@ -214,77 +195,59 @@ export class RoomComponent implements OnInit, OnDestroy {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       this.currentUser.set(user);
 
+      // 1. Busca dados da sala
       const { data: room, error } = await this.supabase.client.from('rooms').select('*').eq('code', this.roomId).single();
       if (error) throw error;
-      
       this.roomData.set(room);
-      if (room.winning_modes) this.selectedModes.set(room.winning_modes);
 
-      // --- LOGICA REFORÇADA DE ENTRADA E CARTELA ---
-      if (user) {
-        const username = user.user_metadata['username'] || 'Convidado';
-
-        // 1. Tenta pegar seus dados na sala
-        const { data: existingPlayer } = await this.supabase.client
+      // --- BLOQUEIO DE ENTRADA ---
+      // Verifica se o usuário JÁ é um jogador desta sala
+      const { data: existingPlayer } = await this.supabase.client
           .from('room_players')
           .select('*')
           .eq('room_code', this.roomId)
-          .eq('user_id', user.id)
+          .eq('user_id', user?.id)
           .maybeSingle();
 
+      // SE o jogo já começou E ele NÃO está na lista -> Bloqueia
+      if (room.status === 'PLAYING' && !existingPlayer) {
+          alert('🚫 O jogo já começou e novos participantes não podem entrar nesta rodada.');
+          this.router.navigate(['/lobby']);
+          return;
+      }
+      // ---------------------------
+
+      if (user) {
+        const username = user.user_metadata['username'] || 'Convidado';
         let myCard = existingPlayer?.card;
 
-        // 2. Se não tem dados ou a cartela está vazia
         if (!existingPlayer || !myCard || myCard.length === 0) {
-          
-          // Gera Cartela no Banco
-          const { data: uniqueCard, error: rpcError } = await this.supabase.client
-            .rpc('generate_unique_card', { room_code_param: this.roomId });
-
+          const { data: uniqueCard, error: rpcError } = await this.supabase.client.rpc('generate_unique_card', { room_code_param: this.roomId });
           if (rpcError) throw rpcError;
           myCard = uniqueCard;
 
           if (existingPlayer) {
-             // Atualiza (incluindo o NOME)
-             await this.supabase.client
-               .from('room_players')
-               .update({ card: myCard, username: username })
-               .eq('room_code', this.roomId)
-               .eq('user_id', user.id);
+             await this.supabase.client.from('room_players').update({ card: myCard, username: username }).eq('room_code', this.roomId).eq('user_id', user.id);
           } else {
-             // Insere novo (incluindo o NOME)
-             await this.supabase.client
-               .from('room_players')
-               .insert({ 
-                 room_code: this.roomId, 
-                 user_id: user.id, 
-                 card: myCard,
-                 username: username 
-               });
+             await this.supabase.client.from('room_players').insert({ room_code: this.roomId, user_id: user.id, card: myCard, username: username });
           }
         }
-        
         if (myCard) this.userCard.set(myCard);
       }
-      // --------------------------------------------------------
 
       this.fetchPlayers();
       this.setupRealtime();
     } catch (err: any) {
       console.error(err);
       alert("Erro ao entrar: " + (err.message || "Erro desconhecido"));
+      this.router.navigate(['/lobby']);
     } finally {
       this.loading.set(false);
     }
   }
 
   async fetchPlayers() {
-    // Busca simples, sem JOIN complexo que pode falhar
-    const { data } = await this.supabase.client
-      .from('room_players')
-      .select('*')
-      .eq('room_code', this.roomId);
-      
+    const { data } = await this.supabase.client.from('room_players').select('*').eq('room_code', this.roomId);
     if (data) this.players.set(data);
   }
 
@@ -297,17 +260,6 @@ export class RoomComponent implements OnInit, OnDestroy {
       .subscribe();
   }
 
-  hasMode(mode: string) { return this.selectedModes().includes(mode); }
-  
-  toggleMode(mode: string) {
-    const current = this.selectedModes();
-    if (current.includes(mode)) {
-      this.selectedModes.set(current.filter(m => m !== mode));
-    } else {
-      this.selectedModes.set([...current, mode]);
-    }
-  }
-
   getPreviewCard() {
     const c = [...this.userCard()];
     if (c.length === 24) c.splice(12, 0, 0);
@@ -317,12 +269,7 @@ export class RoomComponent implements OnInit, OnDestroy {
   async startGame() {
     try {
         await this.supabase.client.from('messages').delete().eq('room_code', this.roomId);
-        await this.supabase.client.from('rooms')
-          .update({ 
-            status: 'PLAYING', 
-            winning_modes: this.selectedModes(),
-            chat_open: false 
-          }).eq('code', this.roomId);
+        await this.supabase.client.from('rooms').update({ status: 'PLAYING', chat_open: false }).eq('code', this.roomId);
     } catch (error: any) {
         console.error(error);
         alert('Erro ao iniciar: ' + error.message);
@@ -330,11 +277,5 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   leaveRoom() { this.router.navigate(['/lobby']); }
-
-  copyRoomCode() {
-    navigator.clipboard.writeText(this.roomId).then(() => {
-      this.copied.set(true);
-      setTimeout(() => this.copied.set(false), 2000);
-    });
-  }
+  copyRoomCode() { navigator.clipboard.writeText(this.roomId).then(() => { this.copied.set(true); setTimeout(() => this.copied.set(false), 2000); }); }
 }

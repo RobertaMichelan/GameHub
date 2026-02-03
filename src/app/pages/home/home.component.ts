@@ -1,9 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router'; // Adicionado RouterModule
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { LucideAngularModule, LogIn, User, X, Mail, UserPlus } from 'lucide-angular';
+import { LucideAngularModule, User, X, Mail, UserPlus, Loader2 } from 'lucide-angular';
 
 @Component({
   selector: 'app-home',
@@ -29,7 +29,10 @@ import { LucideAngularModule, LogIn, User, X, Mail, UserPlus } from 'lucide-angu
                      class="w-full bg-slate-950 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 focus:outline-none mb-4 font-bold text-center">
               
               <button (click)="confirmGuestLogin()" [disabled]="!guestName || loading()" 
-                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold uppercase shadow-lg disabled:opacity-50 transition-all active:scale-95">
+                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold uppercase shadow-lg disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2">
+                  @if (loading()) {
+                    <lucide-icon [img]="Loader2" class="w-5 h-5 animate-spin"></lucide-icon>
+                  }
                   {{ loading() ? 'ENTRANDO...' : 'JOGAR AGORA' }}
               </button>
            </div>
@@ -40,9 +43,12 @@ import { LucideAngularModule, LogIn, User, X, Mail, UserPlus } from 'lucide-angu
         
         <div class="relative group mb-4">
             <img src="assets/finalgame-logo.png" alt="Final Game" 
-                 class="relative h-32 md:h-48 drop-shadow-2xl animate-float object-contain"
-                 onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='block'">
-            <h1 id="logo-fallback" style="display:none" class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">FINAL GAME</h1>
+                 class="relative h-32 md:h-48 drop-shadow-2xl animate-float object-contain mx-auto"
+                 onerror="this.style.display='none'; document.getElementById('fallback-title').style.display='block'">
+            
+            <h1 id="fallback-title" style="display:none" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                FINAL GAME
+            </h1>
         </div>
 
         <h1 class="text-3xl md:text-5xl font-black tracking-tighter text-white mb-2">
@@ -51,12 +57,6 @@ import { LucideAngularModule, LogIn, User, X, Mail, UserPlus } from 'lucide-angu
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
             
-            <button (click)="handleGoogleLogin()" [disabled]="loading()"
-                class="col-span-1 sm:col-span-2 py-4 bg-white hover:bg-slate-100 text-slate-900 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95">
-                <lucide-icon [img]="LogIn" class="w-5 h-5 text-indigo-600"></lucide-icon>
-                <span>Entrar com Google</span>
-            </button>
-
             <button routerLink="/auth" [disabled]="loading()"
                 class="py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
                 <lucide-icon [img]="Mail" class="w-5 h-5"></lucide-icon>
@@ -66,11 +66,11 @@ import { LucideAngularModule, LogIn, User, X, Mail, UserPlus } from 'lucide-angu
             <button routerLink="/auth" [disabled]="loading()"
                 class="py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
                 <lucide-icon [img]="UserPlus" class="w-5 h-5"></lucide-icon>
-                <span>Cadastrar</span>
+                <span>Criar Conta</span>
             </button>
 
             <button (click)="openGuestModal()" [disabled]="loading()"
-                class="col-span-1 sm:col-span-2 py-3 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors">
+                class="col-span-1 sm:col-span-2 py-4 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-900/50 hover:border-emerald-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
                 <lucide-icon [img]="User" class="w-4 h-4"></lucide-icon>
                 <span>Jogar apenas como Convidado</span>
             </button>
@@ -93,18 +93,7 @@ export class HomeComponent {
   guestName = '';
   
   // Ícones
-  readonly LogIn = LogIn; readonly User = User; readonly X = X; readonly Mail = Mail; readonly UserPlus = UserPlus;
-
-  async handleGoogleLogin() {
-    this.loading.set(true);
-    try {
-        await this.auth.signInWithGoogle();
-    } catch (error) {
-        console.error(error);
-        alert('Erro no Google Login');
-        this.loading.set(false);
-    }
-  }
+  readonly User = User; readonly X = X; readonly Mail = Mail; readonly UserPlus = UserPlus; readonly Loader2 = Loader2;
 
   openGuestModal() {
     this.showGuestModal.set(true);
@@ -112,14 +101,23 @@ export class HomeComponent {
 
   async confirmGuestLogin() {
     if (!this.guestName.trim()) return;
+    
     this.loading.set(true);
     try {
-        // Tenta logar. Se o Supabase estiver bloqueado, vai dar erro aqui.
+        console.log("Tentando login anônimo com:", this.guestName);
         await this.auth.signInAnonymously(this.guestName);
+        console.log("Sucesso! Redirecionando...");
         this.router.navigate(['/lobby']); 
-    } catch (error) {
-        console.error(error);
-        alert("Erro: O Login de Convidado pode estar desativado no Supabase.");
+    } catch (error: any) {
+        console.error("Erro no login:", error);
+        
+        // Alerta amigável para debug
+        if (error.message?.includes('anonymous')) {
+           alert("ATENÇÃO: O Login Anônimo está DESATIVADO no Supabase. Ative em Authentication > Providers.");
+        } else {
+           alert("Erro ao entrar: " + (error.message || 'Tente novamente.'));
+        }
+    } finally {
         this.loading.set(false);
     }
   }

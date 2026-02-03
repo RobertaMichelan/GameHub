@@ -40,7 +40,7 @@ import { LucideAngularModule, Gamepad2, ArrowRight, LogIn, User, X } from 'lucid
         
         <div class="relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <img src="assets/finalgame-logo.png" alt="Final Game" class="relative h-32 md:h-40 drop-shadow-2xl animate-float object-contain">
+            <img src="assets/finalgame-logo.png" alt="Final Game">
         </div>
 
         <div class="space-y-4 max-w-xl">

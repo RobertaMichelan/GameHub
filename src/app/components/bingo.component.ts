@@ -26,7 +26,6 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                    <lucide-icon [img]="X" class="w-6 h-6"></lucide-icon>
                 </button>
              </div>
-
              <div class="p-4 overflow-y-auto grid grid-cols-10 gap-1 sm:gap-2 justify-items-center">
                 @for (num of allNumbers; track num) {
                    <div class="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold border transition-all"
@@ -35,11 +34,8 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                    </div>
                 }
              </div>
-             
              <div class="p-4 border-t border-slate-800 bg-slate-950 rounded-b-2xl text-center">
-                <button (click)="showHistoryModal.set(false)" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold uppercase transition-colors">
-                   Voltar ao Jogo
-                </button>
+                <button (click)="showHistoryModal.set(false)" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold uppercase transition-colors">Voltar ao Jogo</button>
              </div>
           </div>
         </div>
@@ -97,9 +93,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 </span>
                 <div class="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
                   @for (hist of history().slice(-4).reverse(); track $index) {
-                    <div class="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 text-xs font-bold text-slate-300 group-hover:border-indigo-500 group-hover:text-white">
-                      {{ hist }}
-                    </div>
+                    <div class="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 text-xs font-bold text-slate-300 group-hover:border-indigo-500 group-hover:text-white">{{ hist }}</div>
                   }
                 </div>
              </div>
@@ -113,11 +107,7 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
 
            @if (isHost && !winnerName()) {
              <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3 animate-fade-in">
-               
-               <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg active:scale-95 disabled:opacity-50">
-                 SORTEAR MANUAL
-               </button>
-
+               <button (click)="drawNumber()" [disabled]="isAutoDrawing()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg active:scale-95 disabled:opacity-50">SORTEAR MANUAL</button>
                @if (!isAutoDrawing()) {
                  <div class="flex justify-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
                    <p class="text-[10px] text-slate-400 uppercase font-bold flex items-center mr-2">Velocidade:</p>
@@ -126,7 +116,6 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                    }
                  </div>
                }
-
                <button (click)="toggleAutoDraw()" [ngClass]="isAutoDrawing() ? 'bg-red-600 hover:bg-red-500 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-500'" class="w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-colors active:scale-95">
                  <lucide-icon [img]="isAutoDrawing() ? Pause : Play" class="w-5 h-5"></lucide-icon>
                  <span>{{ isAutoDrawing() ? 'PARAR AUTOMÁTICO' : 'INICIAR AUTOMÁTICO' }}</span>
@@ -151,10 +140,11 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Zap, Grid3X3, X
                 <button (click)="toggleMark($index)" 
                 class="aspect-square flex items-center justify-center font-bold text-lg sm:text-xl rounded-lg transition-all relative border-2 select-none"
                 [ngClass]="getButtonClass(num, $index)">
-                    @if (num === 0) { <span class="text-[10px] font-black opacity-80">FG</span> } 
+                    
+                    @if (num === 0) { <span class="text-[10px] font-black opacity-50 tracking-tighter">FG</span> } 
                     @else { {{ num }} }
                     
-                    @if (isMarkedOrDrawn(num, $index)) {
+                    @if (num !== 0 && isMarkedOrDrawn(num, $index)) {
                         <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-30 text-4xl font-black pointer-events-none">X</span>
                     }
                 </button>
@@ -196,15 +186,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   verifying = signal(false);
   winnerName = signal<string | null>(null);
   showFalseAlarm = signal(false);
-  showHistoryModal = signal(false); // <--- Novo Estado para o Modal
+  showHistoryModal = signal(false);
   
   isAutoDrawing = signal(false);
   drawSpeed = signal(4000); 
   nearWins = signal(0); 
 
-  // Gera array de 1 a 75 para o quadro de conferência
   readonly allNumbers = Array.from({length: 75}, (_, i) => i + 1);
-
   readonly Play = Play; readonly Pause = Pause; readonly Trophy = Trophy;
   readonly Frown = Frown; readonly Heart = Heart; readonly Zap = Zap;
   readonly Grid3X3 = Grid3X3; readonly X = X;
@@ -218,41 +206,29 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['initialCard'] && this.initialCard && this.initialCard.length > 0) {
-        this.initCard();
-    }
+    if (changes['initialCard']) this.initCard();
   }
 
   initCard() {
     if (this.initialCard && this.initialCard.length > 0) {
-      const organized = this.organizeCardByRows(this.initialCard);
-      this.cardNumbers.set(organized);
-      
-      // Marca o FG automaticamente se for o início
-      if (this.marked().every(m => !m)) {
-          const newMarks = new Array(25).fill(false);
-          newMarks[12] = true; 
-          this.marked.set(newMarks);
+      const b = this.initialCard.slice(0, 5);
+      const i = this.initialCard.slice(5, 10);
+      let n = this.initialCard.slice(10, 14);
+      n.splice(2, 0, 0); 
+      const g = this.initialCard.slice(14, 19);
+      const o = this.initialCard.slice(19, 24);
+
+      const grid: number[] = [];
+      for (let row = 0; row < 5; row++) {
+        grid.push(b[row], i[row], n[row], g[row], o[row]);
       }
+      this.cardNumbers.set(grid);
+
+      // Garante que o FG (índice 12) comece "marcado" logicamente
+      const m = new Array(25).fill(false);
+      m[12] = true;
+      this.marked.set(m);
     }
-  }
-
-  organizeCardByRows(rawCard: number[]): number[] {
-    if (!rawCard || rawCard.length < 24) return [];
-    let processed = [...rawCard];
-    if (processed.length === 24) processed.splice(12, 0, 0);
-
-    const b = processed.slice(0, 5);
-    const i = processed.slice(5, 10);
-    const n = processed.slice(10, 15);
-    const g = processed.slice(15, 20);
-    const o = processed.slice(20, 25);
-
-    const finalGrid: number[] = [];
-    for (let row = 0; row < 5; row++) {
-      finalGrid.push(b[row], i[row], n[row], g[row], o[row]);
-    }
-    return finalGrid;
   }
 
   isMarkedOrDrawn(num: number, index: number): boolean {
@@ -260,10 +236,19 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     return this.marked()[index] || this.history().includes(num);
   }
 
+  // --- LÓGICA VISUAL ESPECIAL ---
   getButtonClass(num: number, index: number): string {
+    // Caso Especial: FG (Meio) -> Cor do fundo da sala (Escuro)
+    if (index === 12) {
+        return 'bg-slate-950 text-slate-500 border-slate-800 shadow-inner';
+    }
+
+    // Caso Normal: Marcado ou Sorteado -> Vermelho
     if (this.isMarkedOrDrawn(num, index)) {
         return 'bg-red-500 text-white border-red-600 transform scale-95 shadow-inner';
     }
+    
+    // Caso Padrão: Branco/Cinza
     return 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100';
   }
 
@@ -316,14 +301,11 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
         this.history.update(h => [...h, payload.number]);
         this.updateNearWinStats();
       })
-      .on('broadcast', { event: 'stop_drawing' }, () => {
-         this.stopAutoDraw();
-      })
+      .on('broadcast', { event: 'stop_drawing' }, () => this.stopAutoDraw())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
-         const newWinner = payload.new['winner_id'];
-         if (newWinner) {
+         if (payload.new.winner_id) {
              this.stopAutoDraw();
-             if (!this.winnerName()) this.announceWinner(newWinner);
+             this.announceWinner(payload.new.winner_id);
          }
       })
       .subscribe();
@@ -351,19 +333,17 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     do { num = Math.floor(Math.random() * 75) + 1; attempts++; } while (this.history().includes(num) && attempts < 200); 
     if (attempts >= 200) { this.stopAutoDraw(); return; }
 
-    // Envia primeiro o visual (Realtime)
+    // 1. Atualiza Visual Local (Host) Imediatamente
+    this.lastNumber.set(num);
+    this.history.update(h => [...h, num]);
+
+    // 2. Avisa os outros
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
     
-    const currentDrawn = [...this.history(), num];
-    
-    // Atualiza DB
+    // 3. Salva no Banco e Confere
+    const currentDrawn = [...this.history()];
     await this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId);
-    
-    // Confere (Enviando a lista atualizada para garantir a sincronia)
-    await this.supabase.client.rpc('check_any_winner', { 
-        room_code_param: this.roomId,
-        current_drawn_numbers: currentDrawn 
-    });
+    await this.supabase.client.rpc('check_any_winner', { room_code_param: this.roomId, current_drawn_numbers: currentDrawn });
     
     this.updateNearWinStats();
   }
@@ -374,16 +354,13 @@ export class BingoComponent implements OnInit, OnDestroy, OnChanges {
     this.stopAutoDraw();
 
     const { data: { user } } = await this.supabase.client.auth.getUser();
-    
-    // Chama a função blindada
     const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { 
         room_code_param: this.roomId, 
         player_id_param: user?.id 
     });
 
-    if (error) { console.error(error); alert("Erro técnico na conferência. Tente novamente."); }
+    if (error) { console.error(error); alert("Erro técnico."); }
     else if (!isWinner) { this.showFalseAlarm.set(true); }
-    
     this.verifying.set(false);
   }
 

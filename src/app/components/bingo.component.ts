@@ -2,15 +2,25 @@ import { Component, Input, signal, OnInit, OnDestroy, inject } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../core/services/supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { LucideAngularModule, Play, Pause, Trophy, Frown } from 'lucide-angular';
+import { LucideAngularModule, Play, Pause, Trophy, Frown, Heart, Gauge } from 'lucide-angular';
 
 @Component({
   selector: 'app-bingo',
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   template: `
-    <div class="flex flex-col items-center w-full max-w-2xl mx-auto p-4 pb-20">
+    <div class="flex flex-col items-center w-full max-w-2xl mx-auto p-4 pb-20 relative">
       
+      @if (nearWins() > 0 && !winnerName()) {
+        <div class="fixed top-20 right-4 z-40 animate-bounce-in">
+           <div class="bg-pink-600 text-white px-4 py-2 rounded-full shadow-xl border-2 border-pink-400 flex items-center gap-2 animate-pulse">
+              <lucide-icon [img]="Heart" class="w-6 h-6 fill-current"></lucide-icon>
+              <span class="font-black text-lg">{{ nearWins() }}</span>
+              <span class="text-xs font-bold uppercase tracking-tighter">Por uma boa!</span>
+           </div>
+        </div>
+      }
+
       @if (winnerName()) {
         <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in">
            <div class="text-center animate-bounce-in relative px-4 w-full max-w-lg">
@@ -36,23 +46,11 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown } from 'lucide-angular'
       @if (showFalseAlarm()) {
         <div class="fixed inset-0 z-[60] flex items-center justify-center bg-red-900/90 backdrop-blur-md animate-fade-in">
            <div class="text-center animate-shake relative px-6 py-10 bg-slate-900 border-4 border-red-500 rounded-3xl shadow-2xl max-w-md mx-4">
-              
               <lucide-icon [img]="Frown" class="w-24 h-24 text-red-500 mx-auto mb-4"></lucide-icon>
-
-              <h1 class="text-4xl md:text-5xl font-black text-red-500 tracking-tighter mb-2 uppercase leading-none">
-                COMEU<br>BRONHA!
-              </h1>
-              
+              <h1 class="text-4xl md:text-5xl font-black text-red-500 tracking-tighter mb-2 uppercase leading-none">COMEU<br>BRONHA!</h1>
               <div class="w-full h-1 bg-slate-700 my-4"></div>
-
-              <p class="text-xl text-slate-300 font-bold mb-6">
-                Faltam números na cartela.<br>
-                <span class="text-yellow-400">Continuem jogando!</span>
-              </p>
-              
-              <button (click)="showFalseAlarm.set(false)" class="w-full bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 uppercase">
-                VOLTAR PRO JOGO
-              </button>
+              <p class="text-xl text-slate-300 font-bold mb-6">Faltam números.<br><span class="text-yellow-400">Continuem jogando!</span></p>
+              <button (click)="showFalseAlarm.set(false)" class="w-full bg-red-600 hover:bg-red-500 text-white py-3 px-6 rounded-xl font-black text-lg shadow-lg transition-transform active:scale-95 uppercase">VOLTAR</button>
            </div>
         </div>
       }
@@ -91,25 +89,39 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown } from 'lucide-angular'
 
            @if (isHost && !winnerName()) {
              <div class="mt-6 pt-4 border-t border-slate-800 flex flex-col gap-3">
+               
                <button (click)="drawNumber()" [disabled]="isAutoDrawing()"
                  class="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                  <span>SORTEAR MANUAL</span>
                  <span class="bg-slate-900 text-xs py-0.5 px-2 rounded-full">{{ history().length }}/75</span>
                </button>
 
+               @if (!isAutoDrawing()) {
+                 <div class="flex justify-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                   <p class="text-[10px] text-slate-400 uppercase font-bold flex items-center mr-2">Velocidade:</p>
+                   @for (s of [2, 3, 4]; track s) {
+                     <button (click)="drawSpeed.set(s * 1000)" 
+                       class="px-3 py-1 text-xs font-bold rounded transition-colors"
+                       [ngClass]="drawSpeed() === s * 1000 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'">
+                       {{ s }}s
+                     </button>
+                   }
+                 </div>
+               }
+
                <button (click)="toggleAutoDraw()" 
                  [ngClass]="isAutoDrawing() ? 'bg-red-600 hover:bg-red-500 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-500'"
                  class="w-full text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                  <lucide-icon [img]="isAutoDrawing() ? Pause : Play" class="w-5 h-5"></lucide-icon>
-                 <span>{{ isAutoDrawing() ? 'PARAR AUTOMÁTICO' : 'INICIAR AUTOMÁTICO (4s)' }}</span>
+                 <span>{{ isAutoDrawing() ? 'PARAR AUTOMÁTICO' : 'INICIAR AUTOMÁTICO' }}</span>
                </button>
+
              </div>
            }
         </div>
       </div>
 
       <div class="bg-white p-4 rounded-xl shadow-2xl w-full max-w-sm relative border-4 border-slate-200">
-        
         <div class="grid grid-cols-5 gap-2 mb-3 text-center">
           <div class="font-black text-2xl text-red-600">B</div>
           <div class="font-black text-2xl text-red-600">I</div>
@@ -123,24 +135,16 @@ import { LucideAngularModule, Play, Pause, Trophy, Frown } from 'lucide-angular'
             <button (click)="toggleMark($index)" 
               class="aspect-square flex items-center justify-center font-bold text-lg sm:text-xl rounded-lg transition-all relative border-2 select-none shadow-sm"
               [ngClass]="marked()[$index] ? 'bg-red-500 text-white border-red-600 transform scale-95' : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'">
-              
-              @if (num === 0) {
-                <span class="text-xs font-black opacity-80 tracking-tighter">FG</span>
-              } @else {
-                {{ num }}
-              }
-              
-              @if (marked()[$index]) {
-                <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-20 text-4xl font-black pointer-events-none">X</span>
-              }
+              @if (num === 0) { <span class="text-xs font-black opacity-80 tracking-tighter">FG</span> } 
+              @else { {{ num }} }
+              @if (marked()[$index]) { <span class="absolute inset-0 flex items-center justify-center text-red-900 opacity-20 text-4xl font-black pointer-events-none">X</span> }
             </button>
           }
         </div>
 
         @if (!winnerName()) {
             <div class="mt-6">
-              <button (click)="checkBingo()" 
-                [disabled]="verifying()"
+              <button (click)="checkBingo()" [disabled]="verifying()"
                 class="w-full bg-gradient-to-b from-yellow-400 to-yellow-500 hover:from-yellow-300 hover:to-yellow-400 disabled:from-slate-400 disabled:to-slate-500 text-red-900 font-black py-4 rounded-xl shadow-xl border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1 transition-all text-xl tracking-widest flex items-center justify-center gap-2">
                 <lucide-icon [img]="Trophy" class="w-6 h-6"></lucide-icon>
                 {{ verifying() ? 'CONFERINDO...' : 'BINGO!' }}
@@ -167,49 +171,44 @@ export class BingoComponent implements OnInit, OnDestroy {
   
   verifying = signal(false);
   winnerName = signal<string | null>(null);
-  showFalseAlarm = signal(false); // <--- CONTROLA O "COMEU BRONHA"
+  showFalseAlarm = signal(false);
+  
+  // Controle de Velocidade e "Por uma Boa"
   isAutoDrawing = signal(false);
+  drawSpeed = signal(4000); // Padrão 4 segundos
+  nearWins = signal(0); // Quantas pessoas faltam 1 numero
 
   readonly Play = Play;
   readonly Pause = Pause;
   readonly Trophy = Trophy;
   readonly Frown = Frown;
+  readonly Heart = Heart;
+  readonly Gauge = Gauge;
 
   private autoDrawInterval: any;
 
   ngOnInit() {
     if (this.initialCard && this.initialCard.length > 0) {
-      // Organiza as colunas (B em B, I em I, etc)
       const organized = this.organizeCardByRows(this.initialCard);
       this.cardNumbers.set(organized);
-
-      // Marca o FG (meio)
       const newMarks = new Array(25).fill(false);
       newMarks[12] = true; 
       this.marked.set(newMarks);
     }
-    
     this.setupRealtime();
     this.recoverGameState();
   }
 
-  // Organiza: Banco (Colunas) -> Tela (Linhas)
   organizeCardByRows(rawCard: number[]): number[] {
     const b = rawCard.slice(0, 5);
     const i = rawCard.slice(5, 10);
-    const n = rawCard.slice(10, 14); // N tem 4 numeros
+    const n = rawCard.slice(10, 14);
     const g = rawCard.slice(14, 19);
     const o = rawCard.slice(19, 24);
-
-    n.splice(2, 0, 0); // Adiciona o 0 (FG) no meio do N
-
+    n.splice(2, 0, 0); 
     const finalGrid: number[] = [];
     for (let row = 0; row < 5; row++) {
-      finalGrid.push(b[row]);
-      finalGrid.push(i[row]);
-      finalGrid.push(n[row]);
-      finalGrid.push(g[row]);
-      finalGrid.push(o[row]);
+      finalGrid.push(b[row], i[row], n[row], g[row], o[row]);
     }
     return finalGrid;
   }
@@ -219,19 +218,21 @@ export class BingoComponent implements OnInit, OnDestroy {
     if (this.channel) this.supabase.client.removeChannel(this.channel);
   }
 
+  // --- NOVA LÓGICA DE VELOCIDADE ---
   toggleAutoDraw() {
     if (this.isAutoDrawing()) {
       this.stopAutoDraw();
     } else {
       this.isAutoDrawing.set(true);
       this.drawNumber();
+      // Usa a velocidade escolhida
       this.autoDrawInterval = setInterval(() => {
         if (this.history().length >= 75) {
           this.stopAutoDraw();
         } else {
           this.drawNumber();
         }
-      }, 4000); 
+      }, this.drawSpeed()); 
     }
   }
 
@@ -256,6 +257,9 @@ export class BingoComponent implements OnInit, OnDestroy {
           if (last) this.lastNumber.set(last);
       }
       if (data?.winner_id) this.announceWinner(data.winner_id);
+      
+      // Atualiza o "Por uma boa" ao entrar
+      this.updateNearWinStats();
   }
 
   setupRealtime() {
@@ -264,6 +268,10 @@ export class BingoComponent implements OnInit, OnDestroy {
     this.channel
       .on('broadcast', { event: 'bingo_draw' }, ({ payload }) => {
         this.updateGameRequest(payload.number);
+      })
+      .on('broadcast', { event: 'stats_update' }, ({ payload }) => {
+        // Escuta atualizações de estatísticas (Coração)
+        if (payload.nearWins !== undefined) this.nearWins.set(payload.nearWins);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload: any) => {
          const newWinner = payload.new['winner_id'];
@@ -276,24 +284,27 @@ export class BingoComponent implements OnInit, OnDestroy {
   }
 
   async announceWinner(winnerId: string) {
-      const { data } = await this.supabase.client
-          .from('room_players')
-          .select('username')
-          .eq('room_code', this.roomId)
-          .eq('user_id', winnerId)
-          .single();
-      
+      const { data } = await this.supabase.client.from('room_players').select('username').eq('room_code', this.roomId).eq('user_id', winnerId).single();
       if (data) this.winnerName.set(data.username);
   }
 
-  closeWinnerModal() {
-    this.winnerName.set(null);
-  }
+  closeWinnerModal() { this.winnerName.set(null); }
 
   updateGameRequest(num: number) {
     this.lastNumber.set(num);
     this.history.update(h => [...h, num]);
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(200);
+  }
+
+  // Atualiza as estatísticas de quem tá quase ganhando
+  async updateNearWinStats() {
+    const { data: count } = await this.supabase.client.rpc('get_near_win_count', { room_code_param: this.roomId });
+    this.nearWins.set(count || 0);
+    
+    // Avisa os outros jogadores (apenas o Host dispara isso pra não floodar)
+    if (this.isHost) {
+       await this.channel?.send({ type: 'broadcast', event: 'stats_update', payload: { nearWins: count || 0 } });
+    }
   }
 
   async drawNumber() {
@@ -304,31 +315,29 @@ export class BingoComponent implements OnInit, OnDestroy {
     do { num = Math.floor(Math.random() * 75) + 1; } while (this.history().includes(num)); 
 
     this.updateGameRequest(num);
+    
+    // Envia o número
     await this.channel?.send({ type: 'broadcast', event: 'bingo_draw', payload: { number: num } });
+    
+    // Salva no banco
     const currentDrawn = this.history();
     await this.supabase.client.from('rooms').update({ drawn_numbers: currentDrawn }).eq('code', this.roomId);
+
+    // Calcula e avisa "Por uma boa"
+    this.updateNearWinStats();
   }
 
   async checkBingo() {
     this.verifying.set(true);
     const { data: user } = await this.supabase.client.auth.getUser();
-
-    // Chama o RPC (Função SQL)
-    const { data: isWinner, error } = await this.supabase.client
-        .rpc('check_bingo_winner', { 
-            room_code_param: this.roomId, 
-            player_id_param: user.user?.id 
-        });
+    const { data: isWinner, error } = await this.supabase.client.rpc('check_bingo_winner', { room_code_param: this.roomId, player_id_param: user.user?.id });
 
     if (error) {
         console.error(error);
-        alert("Erro técnico na conferência.");
+        alert("Erro técnico.");
     } else if (!isWinner) {
-        // --- AQUI ESTÁ A LÓGICA DO "COMEU BRONHA" ---
-        this.showFalseAlarm.set(true); 
+        this.showFalseAlarm.set(true);
     }
-    // Se isWinner for true, o Realtime vai disparar o "announceWinner" sozinho.
-    
     this.verifying.set(false);
   }
 

@@ -4,11 +4,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
-import { 
-  LucideAngularModule, 
-  Grid3X3, Hash, BrainCircuit, Type, Anchor, CircleDot, PhoneCall, Hand,
-  Users, Lock, Unlock, X, Play, ArrowRight 
-} from 'lucide-angular';
+import { LucideAngularModule, Plus, Users, Lock, Unlock, Play, X, Search } from 'lucide-angular';
 
 @Component({
   selector: 'app-lobby',
@@ -17,96 +13,101 @@ import {
   template: `
     <div class="min-h-screen bg-slate-950 p-4 md:p-8 font-sans text-white relative overflow-hidden">
       
-      <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 relative z-10">
+      <header class="flex justify-between items-center mb-8 relative z-10">
         <div>
           <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-            GAME HUB
+            LOBBY
           </h1>
-          <p class="text-slate-400 text-sm">Organize ou participe</p>
+          <p class="text-slate-400 text-sm">Escolha um jogo para começar</p>
         </div>
         
-        <div class="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-700 w-full md:w-auto shadow-lg">
-          <input [(ngModel)]="globalCode" (keyup.enter)="joinByCode()" type="text" maxlength="4" placeholder="DIGITE O CÓDIGO DA SALA" 
-                 class="bg-transparent border-none focus:outline-none text-white font-bold tracking-widest w-full md:w-64 placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal text-center uppercase">
-          <button (click)="joinByCode()" [disabled]="!globalCode || loading()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-3 rounded-lg font-bold transition-colors disabled:opacity-50">
-            <lucide-icon [img]="ArrowRight" class="w-5 h-5"></lucide-icon>
+        <div class="flex items-center gap-4">
+          <div class="hidden md:flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-full border border-slate-700">
+            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <span class="text-xs font-bold text-emerald-400">ONLINE</span>
+          </div>
+          <button (click)="logout()" class="text-slate-500 hover:text-red-400 transition-colors text-sm font-bold">
+            SAIR
           </button>
         </div>
       </header>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10 max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10 max-w-6xl mx-auto">
         
-        @for (game of games; track game.id) {
-          <div (click)="openSetupModal(game)" 
-               class="group relative bg-slate-900/40 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500 rounded-3xl p-6 cursor-pointer transition-all hover:-translate-y-2 shadow-xl hover:shadow-2xl">
-            
-            <div class="h-32 rounded-2xl mb-4 flex items-center justify-center transition-colors bg-slate-900/50 group-hover:bg-indigo-500/10">
-              <lucide-icon [img]="game.icon" [class]="'w-14 h-14 text-' + game.color + '-400'"></lucide-icon>
-            </div>
-
-            <h3 class="text-xl font-bold text-white mb-1 group-hover:text-indigo-400">{{ game.name }}</h3>
-            <p class="text-slate-500 text-sm">{{ game.desc }}</p>
-
-            <div class="mt-4 flex items-center gap-2 text-xs font-bold text-slate-600 group-hover:text-white uppercase tracking-wider">
-              <span>Criar Sala</span>
-              <lucide-icon [img]="Play" class="w-3 h-3"></lucide-icon>
-            </div>
+        <div (click)="openSetupModal('tictactoe', 'Jogo da Velha')" 
+             class="group bg-slate-900/50 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 cursor-pointer transition-all hover:-translate-y-1 shadow-xl">
+          <div class="h-40 bg-indigo-900/20 rounded-xl mb-4 flex items-center justify-center group-hover:bg-indigo-600/20 transition-colors">
+            <lucide-icon [img]="Play" class="w-12 h-12 text-indigo-400"></lucide-icon>
           </div>
-        }
+          <h3 class="text-xl font-bold mb-1">Jogo da Velha</h3>
+          <p class="text-slate-500 text-sm">Clássico estratégico.</p>
+        </div>
+
+        <div (click)="openSetupModal('memory', 'Jogo da Memória')"
+             class="group bg-slate-900/50 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 rounded-2xl p-6 cursor-pointer transition-all hover:-translate-y-1 shadow-xl">
+          <div class="h-40 bg-purple-900/20 rounded-xl mb-4 flex items-center justify-center group-hover:bg-purple-600/20 transition-colors">
+            <lucide-icon [img]="Users" class="w-12 h-12 text-purple-400"></lucide-icon>
+          </div>
+          <h3 class="text-xl font-bold mb-1">Jogo da Memória</h3>
+          <p class="text-slate-500 text-sm">Encontre os pares.</p>
+        </div>
+
+        <div class="bg-slate-900/20 border border-slate-800 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-slate-600">
+          <span class="text-sm font-bold uppercase tracking-widest">Em Breve</span>
+        </div>
       </div>
 
       @if (showModal()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-          <div class="bg-slate-950 border border-slate-800 w-full max-w-md p-6 rounded-3xl shadow-2xl relative">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in p-4">
+          <div class="bg-slate-900 border border-slate-700 w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
             
             <button (click)="closeModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white">
-              <lucide-icon [img]="X" class="w-6 h-6"></lucide-icon>
+              <lucide-icon [img]="X" class="w-5 h-5"></lucide-icon>
             </button>
 
-            <h2 class="text-2xl font-black text-white mb-2">CONFIGURAR SALA</h2>
-            <p class="text-indigo-400 text-sm font-bold mb-6 uppercase tracking-widest">
-              {{ selectedGame()?.name }}
-            </p>
+            <h2 class="text-2xl font-bold text-white mb-1">Criar Sala</h2>
+            <p class="text-indigo-400 text-sm font-bold mb-6 uppercase">{{ selectedGameName() }}</p>
 
             <div class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-2 gap-3">
                 <button (click)="isPrivate.set(false)" 
-                  [class.bg-indigo-600]="!isPrivate()" [class.text-white]="!isPrivate()" [class.border-transparent]="!isPrivate()"
-                  class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 flex flex-col items-center gap-2 hover:bg-slate-800 transition-all">
+                  [class.bg-indigo-600]="!isPrivate()" [class.border-indigo-500]="!isPrivate()"
+                  class="p-3 rounded-xl border border-slate-700 bg-slate-950 flex flex-col items-center gap-2 transition-all">
                   <lucide-icon [img]="Unlock" class="w-6 h-6"></lucide-icon>
-                  <span class="text-xs font-bold uppercase">Pública</span>
+                  <span class="text-sm font-bold">Aberta</span>
                 </button>
 
                 <button (click)="isPrivate.set(true)"
-                  [class.bg-indigo-600]="isPrivate()" [class.text-white]="isPrivate()" [class.border-transparent]="isPrivate()"
-                  class="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 text-slate-400 flex flex-col items-center gap-2 hover:bg-slate-800 transition-all">
+                  [class.bg-indigo-600]="isPrivate()" [class.border-indigo-500]="isPrivate()"
+                  class="p-3 rounded-xl border border-slate-700 bg-slate-950 flex flex-col items-center gap-2 transition-all">
                   <lucide-icon [img]="Lock" class="w-6 h-6"></lucide-icon>
-                  <span class="text-xs font-bold uppercase">Privada</span>
+                  <span class="text-sm font-bold">Privada</span>
                 </button>
               </div>
 
-              <div class="bg-slate-900/50 p-4 rounded-xl text-center border border-slate-800">
-                @if (isPrivate()) {
-                  <p class="text-slate-400 text-sm">Você receberá um <strong class="text-white">Código de 4 Dígitos</strong> para compartilhar.</p>
-                } @else {
-                  <p class="text-slate-400 text-sm">A sala aparecerá na lista pública para todos.</p>
-                }
-              </div>
+              @if (isPrivate()) {
+                <div class="animate-slide-down">
+                  <label class="text-xs font-bold text-slate-400 mb-1 block">SENHA DA SALA</label>
+                  <input [(ngModel)]="roomPassword" type="text" placeholder="Ex: 1234" 
+                         class="w-full bg-slate-950 border border-slate-700 text-white px-4 py-3 rounded-xl focus:border-indigo-500 focus:outline-none">
+                </div>
+              }
 
               <button (click)="createRoom()" [disabled]="loading()" 
-                      class="w-full bg-white hover:bg-slate-200 text-slate-950 py-4 rounded-xl font-black uppercase shadow-lg mt-2 disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2">
-                @if (loading()) { <div class="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin"></div> }
-                {{ loading() ? 'CRIANDO...' : 'INICIAR JOGO' }}
+                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold uppercase shadow-lg mt-4 disabled:opacity-50 transition-all active:scale-95">
+                {{ loading() ? 'CRIANDO...' : 'CRIAR SALA E JOGAR' }}
               </button>
             </div>
+
           </div>
         </div>
       }
+
     </div>
   `,
   styles: [`
     .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   `]
 })
 export class LobbyComponent {
@@ -114,31 +115,25 @@ export class LobbyComponent {
   auth = inject(AuthService);
   router = inject(Router);
 
-  // Icons
-  readonly X = X; readonly Unlock = Unlock; readonly Lock = Lock; readonly Play = Play; readonly ArrowRight = ArrowRight;
-
-  // Games List
-  games = [
-    { id: 'bingo', name: 'Bingo Online', desc: 'Complete a cartela!', icon: Grid3X3, color: 'indigo' },
-    { id: 'chamada', name: 'Chamada', desc: 'Atenda o telefone primeiro!', icon: PhoneCall, color: 'cyan' },
-    { id: 'stop', name: 'Stop (Adedonha)', desc: 'Quem sabe mais palavras?', icon: Hand, color: 'rose' },
-    { id: 'tictactoe', name: 'Jogo da Velha', desc: 'Clássico X vs O', icon: Hash, color: 'emerald' },
-    { id: 'memory', name: 'Jogo da Memória', desc: 'Encontre os pares', icon: BrainCircuit, color: 'purple' },
-    { id: 'battleship', name: 'Batalha Naval', desc: 'Afunde os navios', icon: Anchor, color: 'blue' }
-  ];
-
-  // States
+  // Estados do Modal
   showModal = signal(false);
   loading = signal(false);
-  selectedGame = signal<any>(null);
+  selectedGameType = signal('');
+  selectedGameName = signal('');
   
-  // Inputs
-  isPrivate = signal(false); // Padrão pública como antes
-  globalCode = '';
+  // Configurações da Sala
+  isPrivate = signal(false);
+  roomPassword = '';
 
-  openSetupModal(game: any) {
-    this.selectedGame.set(game);
+  // Ícones
+  readonly Plus = Plus; readonly Users = Users; readonly Lock = Lock; 
+  readonly Unlock = Unlock; readonly Play = Play; readonly X = X; readonly Search = Search;
+
+  openSetupModal(type: string, name: string) {
+    this.selectedGameType.set(type);
+    this.selectedGameName.set(name);
     this.isPrivate.set(false);
+    this.roomPassword = '';
     this.showModal.set(true);
   }
 
@@ -146,23 +141,18 @@ export class LobbyComponent {
     this.showModal.set(false);
   }
 
-  // --- LÓGICA DE CRIAÇÃO ---
   async createRoom() {
     this.loading.set(true);
     try {
       const user = await this.auth.getUser();
       
-      // Gera código de 4 dígitos APENAS se for privada (ou sempre, se preferir)
-      // Aqui gero sempre para garantir que existe
-      const code = Math.floor(1000 + Math.random() * 9000).toString(); 
-
       const { data, error } = await this.supabase.client
         .from('rooms')
         .insert({
-          name: `${this.selectedGame().name} de ${user?.user_metadata?.['username'] || 'Convidado'}`,
-          game_type: this.selectedGame().id,
+          name: `${this.selectedGameName()} de ${user?.email || 'Convidado'}`,
+          game_type: this.selectedGameType(),
           is_public: !this.isPrivate(),
-          code: code, // Salva o código
+          password: this.isPrivate() ? this.roomPassword : null,
           host_id: user?.id,
           status: 'waiting'
         })
@@ -170,36 +160,19 @@ export class LobbyComponent {
         .single();
 
       if (error) throw error;
+
+      // Sucesso! Vai para a sala
       this.router.navigate(['/room', data.id]);
 
     } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao criar sala. Verifique sua conexão.');
+      console.error('Erro ao criar sala:', error);
+      alert('Não foi possível criar a sala.');
     } finally {
       this.loading.set(false);
     }
   }
 
-  // --- LÓGICA DE ENTRAR COM CÓDIGO ---
-  async joinByCode() {
-    if (!this.globalCode || this.globalCode.length < 4) return;
-    this.loading.set(true);
-    try {
-      const { data, error } = await this.supabase.client
-        .from('rooms')
-        .select('id')
-        .eq('code', this.globalCode)
-        .single();
-
-      if (error || !data) {
-        alert('Sala não encontrada com este código!');
-      } else {
-        this.router.navigate(['/room', data.id]);
-      }
-    } catch (err) {
-      alert('Erro ao buscar sala.');
-    } finally {
-      this.loading.set(false);
-    }
+  async logout() {
+    await this.auth.signOut();
   }
 }

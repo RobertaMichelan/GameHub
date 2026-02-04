@@ -1,29 +1,24 @@
-import { Component, inject, signal, OnInit, OnDestroy, computed, HostListener } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseService } from '../../core/services/supabase.service';
-import { AuthService } from '../../core/services/auth.service';
-import { LucideAngularModule, Home, Users, Trophy, Copy, Check, Settings, Eye, LogOut, Lock } from 'lucide-angular';
+import { LucideAngularModule, Home, Users, Trophy, Copy, Check } from 'lucide-angular';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { BingoComponent } from '../../components/bingo.component';
-import { ChatComponent } from '../../components/chat.component';
 
 @Component({
   selector: 'app-room',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, BingoComponent, ChatComponent],
+  imports: [CommonModule, LucideAngularModule],
   template: `
     <div class="min-h-screen bg-slate-950 text-white flex flex-col font-sans">
       
       <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 sticky top-0 z-10">
-        
-        <div class="flex items-center gap-4">
-          <button (click)="leaveRoom()" class="hover:opacity-80 transition-opacity">
-             <img src="assets/finalgame-logo.png" alt="Final Game" class="h-8 md:h-10 drop-shadow-md">
+        <div class="flex items-center gap-3">
+          <button (click)="leaveRoom()" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Voltar ao Lobby">
+            <lucide-icon [img]="Home" class="w-5 h-5"></lucide-icon>
           </button>
-
-          <div class="h-8 w-[1px] bg-slate-700 mx-2"></div>
+          
+          <div class="h-8 w-[1px] bg-slate-700"></div>
           
           <div class="flex flex-col">
             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mb-1">CÓDIGO</p>
@@ -31,116 +26,89 @@ import { ChatComponent } from '../../components/chat.component';
           </div>
         </div>
 
-        <div class="flex items-center gap-4">
-          @if (roomData()?.status === 'PLAYING') {
-            <div class="hidden sm:flex items-center gap-1 bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold uppercase animate-pulse">
-               <lucide-icon [img]="Lock" class="w-3 h-3"></lucide-icon>
-               <span>Em Jogo</span>
-            </div>
-          }
-          
-          <div class="hidden sm:flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
-            <lucide-icon [img]="Users" class="w-4 h-4 text-indigo-400"></lucide-icon>
-            <span class="text-sm font-bold">{{ players().length }}</span>
-          </div>
-
-          <button (click)="logout()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-lg transition-all text-xs font-bold uppercase border border-slate-700">
-            <lucide-icon [img]="LogOut" class="w-4 h-4"></lucide-icon>
-            <span class="hidden sm:inline">Sair</span>
-          </button>
+        <div class="flex items-center gap-2 bg-slate-800 py-1.5 px-3 rounded-full border border-slate-700">
+          <lucide-icon [img]="Users" class="w-4 h-4 text-indigo-400"></lucide-icon>
+          <span class="text-sm font-bold">{{ players().length }}</span>
         </div>
       </header>
 
-      <main class="flex-1 p-4 md:p-6 flex flex-col items-center max-w-6xl mx-auto w-full">
+      <main class="flex-1 p-6 flex flex-col items-center max-w-4xl mx-auto w-full">
+        
         @if (loading()) {
           <div class="flex flex-col items-center gap-4 mt-20 animate-pulse">
             <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-slate-400 font-bold">Conectando à sala...</p>
+            <p class="text-slate-400 font-bold">Conectando...</p>
           </div>
         } 
+        
         @else {
-          <div class="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="text-center mb-8 mt-4 w-full max-w-lg">
             
-            <div class="lg:col-span-2">
-              @if (roomData()?.status === 'PLAYING') {
-                <app-bingo 
-                  [isHost]="isHost()" 
-                  [roomId]="roomId" 
-                  [initialCard]="userCard()"
-                  [winningModes]="roomData()?.winning_modes || ['FULL']">
-                </app-bingo>
-              } @else {
-                <div class="flex flex-col items-center text-center">
-                  <h2 class="text-3xl font-bold mb-6">Sala de {{ roomData()?.game_type }}</h2>
+            <h2 class="text-3xl font-bold mb-2">Sala de {{ roomData()?.game_type }}</h2>
+            
+            @if (isHost()) {
+              <div class="bg-indigo-900/20 border border-indigo-500/30 p-6 rounded-2xl mb-6 mt-6 shadow-2xl shadow-indigo-900/20">
+                <p class="text-indigo-300 font-bold mb-4 flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                  <lucide-icon [img]="Trophy" class="w-4 h-4"></lucide-icon> 
+                  Para convidar seus amigos:
+                </p>
+                
+                <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 flex flex-col items-center gap-4 relative overflow-hidden group">
+                  <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
-                  @if (isHost()) {
-                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg mb-6 shadow-xl">
-                      <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4 mb-6 group cursor-pointer" (click)="copyRoomCode()">
-                        <div class="text-left">
-                          <p class="text-xs text-slate-500 font-bold uppercase">Compartilhe o código</p>
-                          <p class="text-4xl font-mono font-black text-white tracking-widest">{{ roomId }}</p>
-                        </div>
-                        <lucide-icon [img]="copied() ? Check : Copy" class="w-6 h-6 text-indigo-500"></lucide-icon>
-                      </div>
-                      
-                      <button (click)="startGame()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
-                        <lucide-icon [img]="Trophy" class="w-5 h-5"></lucide-icon> INICIAR PARTIDA
-                      </button>
-                    </div>
-                  } @else {
-                    <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6 max-w-md mx-auto mb-6">
-                       <p class="text-slate-400 text-lg animate-pulse">Aguardando o Organizador...</p>
-                    </div>
-                    
-                    @if (userCard().length > 0) {
-                      <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 max-w-sm mx-auto opacity-75 hover:opacity-100 transition-opacity">
-                        <p class="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center justify-center gap-2">
-                          <lucide-icon [img]="Eye" class="w-3 h-3"></lucide-icon> Sua Cartela
-                        </p>
-                        <div class="grid grid-cols-5 gap-1 text-[10px]">
-                           @for (n of getPreviewCard(); track $index) {
-                             <div class="aspect-square bg-slate-800 flex items-center justify-center rounded text-slate-300 font-bold">
-                               {{ n === 0 ? 'FG' : n }}
-                             </div>
-                           }
-                        </div>
-                      </div>
-                    }
-                  }
+                  <span class="text-slate-500 text-xs font-bold uppercase">Compartilhe este código</span>
+                  
+                  <div class="text-6xl font-mono font-black text-white tracking-widest select-all cursor-pointer" (click)="copyRoomCode()">
+                    {{ roomId }}
+                  </div>
+
+                  <button (click)="copyRoomCode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-full font-bold text-sm flex items-center gap-2 transition-transform active:scale-95 shadow-lg">
+                    <lucide-icon [img]="copied() ? Check : Copy" class="w-4 h-4"></lucide-icon>
+                    {{ copied() ? 'COPIADO!' : 'COPIAR CÓDIGO' }}
+                  </button>
                 </div>
-              }
-              
-              <div class="w-full mt-8 border-t border-slate-800 pt-6">
-                 <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center flex items-center justify-center gap-2">
-                    <lucide-icon [img]="Users" class="w-3 h-3"></lucide-icon> Lista de Participantes
-                 </h3>
-                 <div class="flex flex-wrap gap-2 justify-center">
-                    @for (p of players(); track p.id) {
-                      <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2 animate-fade-in transition-all hover:border-indigo-500">
-                        <span class="w-2 h-2 rounded-full" [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500' : 'bg-green-500'"></span>
-                        <span class="font-bold text-sm text-slate-200">
-                          {{ p.username || 'Convidado' }} 
-                          @if(p.id === currentUser()?.id) { (Você) }
-                          @if(p.id === roomData()?.host_id) { 👑 }
-                        </span>
-                      </div>
-                    }
+                
+                <p class="text-slate-500 text-xs mt-4">Peça para eles digitarem no menu "Entrar"</p>
+              </div>
+
+              <div class="fixed bottom-8 px-4 z-50 left-0 right-0 flex justify-center">
+                <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform hover:scale-105 transition-all text-lg flex items-center gap-2 shadow-emerald-500/20">
+                  <span>INICIAR PARTIDA</span>
+                </button>
+              </div>
+
+            } @else {
+              <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 mt-6">
+                 <p class="text-slate-400 text-lg">Aguardando o Organizador iniciar...</p>
+                 <div class="mt-4 flex justify-center">
+                    <div class="animate-bounce text-2xl">⏳</div>
                  </div>
               </div>
+            }
+          </div>
 
-            </div>
-
-            <div class="lg:col-span-1">
-              <div class="sticky top-20">
-                <app-chat 
-                  [roomId]="roomId" 
-                  [isHost]="isHost()" 
-                  [isOpen]="roomData()?.chat_open"
-                  [currentUserId]="currentUser()?.id"
-                  [currentUsername]="currentUser()?.user_metadata.username || 'Convidado'">
-                </app-chat>
-              </div>
-            </div>
+          <div class="w-full mb-24">
+             <h3 class="font-bold text-slate-500 uppercase text-xs mb-4 tracking-wider text-center flex items-center justify-center gap-2">
+               Jogadores na Sala <span class="bg-slate-800 text-slate-300 px-2 rounded-full text-[10px]">{{ players().length }}</span>
+             </h3>
+             
+             <div class="flex flex-wrap gap-2 justify-center">
+                @for (p of players(); track p.id) {
+                  <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-2 animate-fade-in shadow-sm">
+                    <span class="w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
+                          [ngClass]="p.id === roomData()?.host_id ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-green-500 shadow-green-500/50'"></span>
+                    
+                    <span class="font-bold text-sm text-slate-200">
+                      {{ p.username }} 
+                      @if(p.id === currentUser()?.id) { <span class="text-slate-500 font-normal">(Você)</span> }
+                    </span>
+                    
+                    @if (p.id === roomData()?.host_id) {
+                      <lucide-icon [img]="Trophy" class="w-3 h-3 text-yellow-500 ml-1"></lucide-icon>
+                    }
+                  </div>
+                }
+             </div>
           </div>
         }
       </main>
@@ -151,32 +119,36 @@ export class RoomComponent implements OnInit, OnDestroy {
   route = inject(ActivatedRoute);
   router = inject(Router);
   supabase = inject(SupabaseService);
-  authService = inject(AuthService);
   
-  readonly Home = Home; readonly Users = Users; readonly Trophy = Trophy;
-  readonly Copy = Copy; readonly Check = Check; readonly Settings = Settings;
-  readonly Eye = Eye; readonly LogOut = LogOut; readonly Lock = Lock;
+  readonly Home = Home;
+  readonly Users = Users;
+  readonly Trophy = Trophy;
+  readonly Copy = Copy;
+  readonly Check = Check;
 
   roomId = '';
   loading = signal(true);
-  copied = signal(false);
+  copied = signal(false); // Para mudar o ícone do botão
   
   roomData = signal<any>(null);
   players = signal<any[]>([]);
   currentUser = signal<any>(null);
-  userCard = signal<number[]>([]);
+  
+  isHost = computed(() => {
+    const user = this.currentUser();
+    const room = this.roomData();
+    return user && room && user.id === room.host_id;
+  });
 
-  isHost = computed(() => this.currentUser()?.id === this.roomData()?.host_id);
   private channel: RealtimeChannel | null = null;
-  private heartbeatInterval: any;
 
   async ngOnInit() {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
     if (this.roomId) await this.connectToRoom();
   }
 
-  async logout() {
-    await this.authService.signOut();
+  ngOnDestroy() {
+    if (this.channel) this.supabase.client.removeChannel(this.channel);
   }
 
   async connectToRoom() {
@@ -184,44 +156,25 @@ export class RoomComponent implements OnInit, OnDestroy {
       const { data: { user } } = await this.supabase.client.auth.getUser();
       this.currentUser.set(user);
 
-      const { data: room, error } = await this.supabase.client.from('rooms').select('*').eq('code', this.roomId).single();
+      const { data: room, error } = await this.supabase.client
+        .from('rooms')
+        .select('*')
+        .eq('code', this.roomId)
+        .single();
+      
       if (error) throw error;
       this.roomData.set(room);
 
-      const { data: existingPlayer } = await this.supabase.client.from('room_players').select('*').eq('room_code', this.roomId).eq('user_id', user?.id).maybeSingle();
-
-      if (room.status === 'PLAYING' && !existingPlayer) {
-          alert('🚫 O jogo já começou e novos participantes não podem entrar nesta rodada.');
-          this.router.navigate(['/lobby']);
-          return;
-      }
-
       if (user) {
-        const username = user.user_metadata['username'] || 'Convidado';
-        let myCard = existingPlayer?.card;
-
-        if (!existingPlayer || !myCard || myCard.length === 0) {
-          const { data: uniqueCard, error: rpcError } = await this.supabase.client.rpc('generate_unique_card', { room_code_param: this.roomId });
-          if (rpcError) throw rpcError;
-          myCard = uniqueCard;
-
-          if (existingPlayer) {
-             await this.supabase.client.from('room_players').update({ card: myCard, username: username }).eq('room_code', this.roomId).eq('user_id', user.id);
-          } else {
-             await this.supabase.client.from('room_players').insert({ room_code: this.roomId, user_id: user.id, card: myCard, username: username });
-          }
-        }
-        if (myCard) this.userCard.set(myCard);
-        
-        // INICIA O HEARTBEAT
-        this.startHeartbeat();
+        await this.supabase.client.from('room_players').upsert({
+          room_code: this.roomId,
+          user_id: user.id
+        });
       }
-
       this.fetchPlayers();
       this.setupRealtime();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      alert("Erro ao entrar: " + (err.message || "Erro desconhecido"));
       this.router.navigate(['/lobby']);
     } finally {
       this.loading.set(false);
@@ -229,75 +182,34 @@ export class RoomComponent implements OnInit, OnDestroy {
   }
 
   async fetchPlayers() {
-    const { data } = await this.supabase.client.from('room_players').select('*').eq('room_code', this.roomId);
-    if (data) this.players.set(data);
+    const { data } = await this.supabase.client
+      .from('room_players')
+      .select('*, profiles(username)')
+      .eq('room_code', this.roomId);
+
+    if (data) {
+      this.players.set(data.map((p: any) => ({
+        id: p.user_id,
+        username: p.profiles?.username || 'Convidado'
+      })));
+    }
   }
 
   setupRealtime() {
     this.channel = this.supabase.client.channel(`room_${this.roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_players', filter: `room_code=eq.${this.roomId}` }, () => this.fetchPlayers())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${this.roomId}` }, (payload) => {
-        this.roomData.set(payload.new);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_players', filter: `room_code=eq.${this.roomId}` }, () => {
+        this.fetchPlayers();
       })
       .subscribe();
   }
 
-  getPreviewCard() {
-    const c = [...this.userCard()];
-    if (c.length === 24) c.splice(12, 0, 0);
-    return c;
-  }
+  leaveRoom() { this.router.navigate(['/lobby']); }
 
-  async startGame() {
-    try {
-        await this.supabase.client.from('messages').delete().eq('room_code', this.roomId);
-        await this.supabase.client.from('rooms').update({ status: 'PLAYING', chat_open: false }).eq('code', this.roomId);
-    } catch (error: any) {
-        console.error(error);
-        alert('Erro ao iniciar: ' + error.message);
-    }
-  }
-
-  // --- HEARTBEAT & LIMPEZA ---
-  startHeartbeat() {
-    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-    this.sendHeartbeat(); 
-    this.heartbeatInterval = setInterval(() => {
-        this.sendHeartbeat();
-    }, 120000); 
-  }
-
-  async sendHeartbeat() {
-    if (!this.currentUser() || !this.roomId) return;
-    await this.supabase.client.rpc('update_heartbeat', { 
-        room_code_param: this.roomId, 
-        user_id_param: this.currentUser().id 
+  copyRoomCode() {
+    navigator.clipboard.writeText(this.roomId).then(() => {
+      // Animação de sucesso
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
     });
-  }
-
-  async leaveRoom() {
-    await this.cleanupUser();
-    this.router.navigate(['/lobby']);
-  }
-
-  async cleanupUser() {
-    const user = this.currentUser();
-    if (user) {
-       await this.supabase.client.from('room_players').delete().eq('room_code', this.roomId).eq('user_id', user.id);
-    }
-  }
-
-  copyRoomCode() { 
-    navigator.clipboard.writeText(this.roomId).then(() => { 
-        this.copied.set(true); 
-        setTimeout(() => this.copied.set(false), 2000); 
-    }); 
-  }
-
-  @HostListener('window:beforeunload')
-  async ngOnDestroy() {
-    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-    this.cleanupUser();
-    if (this.channel) this.supabase.client.removeChannel(this.channel);
   }
 }
